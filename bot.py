@@ -1,70 +1,81 @@
 import os
 import discord
 import requests
-from io import BytesIO
 import imagehash
 from PIL import Image
+from io import BytesIO
+from flask import Flask
+from threading import Thread
 
-# Configuração dos Intents
+# =========================================================
+# CONTROLE DE PORTA PARA O RENDER NÃO CAIR (100% OBRIGATÓRIO)
+# =========================================================
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot GHOUL SECURITY Online!"
+
+def run():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# =========================================================
+# O SEU CÓDIGO ORIGINAL DE BUSCA POR HASH
+# =========================================================
+TOKEN = 'MTUxNjU5NDcwMTU3NzIyNDIzMg.G746qa.bVQFgmD1na6oe3-bfYliBxJR5-rRcg52KgPHyA'
+
+IMAGENS_BLOQUEADAS = [
+    '9977339a644d9a62',
+    '936c6c4e946cd966',
+    '9748a8dcbd4a2579',
+    'c48ff019712fe2c6',
+    'ec9397cbd82c24e4',
+    'ec9397cbd82c3464'
+]
+
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
-    print('Bot GHOUL SECURITY online e vigiando!')
+    print('Bot GHOUL SECURITY online e vigiando por Hashes!')
 
 @client.event
 async def on_message(message):
     if message.author == client.user:
         return
 
-    # 3. Verificação de imagens
+    CANAIS_IGNORADOS = [1272293056812683345] 
+    
+    if message.channel.id in CANAIS_IGNORADOS:
+        return
+
     if message.attachments:
         for attachment in message.attachments:
-            if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if attachment.filename.lower().endswith(('png', 'jpg', 'jpeg')):
                 try:
-                    # ISSO É O QUE FALTA NO SEU CÓDIGO
-                    await message.delete() 
-                    print(f"Imagem de {message.author} apagada!")
-                except Exception as e:
-                    print(f"Erro ao deletar: {e}")
-                    # Aqui entra a sua lógica de processamento de imagem
-                    # Exemplo simples de verificação (adicione a sua lógica aqui):
                     resposta = requests.get(attachment.url)
                     imagem = Image.open(BytesIO(resposta.content))
                     hash_atual = imagehash.phash(imagem)
-                    
-                    # (Coloque aqui o seu loop de verificação de hash)
-                    
+
+                    for hash_bloqueado_str in IMAGENS_BLOQUEADAS:
+                        hash_bloqueado = imagehash.hex_to_hash(hash_bloqueado_str)
+                        
+                        if (hash_atual - hash_bloqueado) < 5:
+                            await message.delete()
+                            print(f"Imagem bloqueada detectada e removida!")
+                            break 
                 except Exception as e:
                     print(f"Erro ao processar imagem: {e}")
 
-# --- CONFIGURAÇÃO PARA A NUVEM ---
-# O bot vai buscar o token em uma variável de ambiente chamada DISCORD_TOKEN
-# Assim seu token fica seguro e não precisa ficar escrito no código.
-TOKEN = os.environ.get('DISCORD_TOKEN')
-
-from flask import Flask
-from threading import Thread
-
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "O bot está online!"
-
-def run():
-    # O Render exige que a porta seja dinâmica
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
-    t = Thread(target=run)
-    t.start()
-
-# Certifique-se de que esta linha esteja logo abaixo do código acima:
+# =========================================================
+# LIGA O SERVIDOR DE PORTA E DEPOIS O BOT
+# =========================================================
 keep_alive()
-
-if TOKEN:
-    client.run(TOKEN)
-else:
-    print("ERRO: O token não foi encontrado. Configure a variável DISCORD_TOKEN.")
+client.run(TOKEN)
