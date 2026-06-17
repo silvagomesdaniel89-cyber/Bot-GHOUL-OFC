@@ -47,6 +47,25 @@ async def on_message(message):
 # Assim seu token fica seguro e não precisa ficar escrito no código.
 TOKEN = os.environ.get('DISCORD_TOKEN')
 
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "O bot está online!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# Certifique-se de que esta linha esteja logo abaixo do código acima:
+keep_alive()
+
 if TOKEN:
     client.run(TOKEN)
 else:
