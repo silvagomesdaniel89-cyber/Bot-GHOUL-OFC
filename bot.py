@@ -27,7 +27,7 @@ def keep_alive():
 # =========================================================
 # O SEU CÓDIGO ORIGINAL DE BUSCA POR HASH
 # =========================================================
-TOKEN = 'MTUxNjU5NDcwMTU3NzIyNDIzMg.G746qa.bVQFgmD1na6oe3-bfYliBxJR5-rRcg52KgPHyA'
+TOKEN = os.environ.get('DISCORD_TOKEN')
 
 IMAGENS_BLOQUEADAS = [
     '9977339a644d9a62',
