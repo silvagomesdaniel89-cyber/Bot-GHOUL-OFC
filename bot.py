@@ -16,21 +16,19 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    # 1. Ignorar mensagens do próprio bot
     if message.author == client.user:
-        return
-
-    # 2. Lista de canais ignorados (O bot não fará nada aqui)
-    CANAIS_IGNORADOS = [1272293056812683345] 
-    
-    if message.channel.id in CANAIS_IGNORADOS:
         return
 
     # 3. Verificação de imagens
     if message.attachments:
         for attachment in message.attachments:
-            if attachment.filename.lower().endswith(('png', 'jpg', 'jpeg')):
+            if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 try:
+                    # ISSO É O QUE FALTA NO SEU CÓDIGO
+                    await message.delete() 
+                    print(f"Imagem de {message.author} apagada!")
+                except Exception as e:
+                    print(f"Erro ao deletar: {e}")
                     # Aqui entra a sua lógica de processamento de imagem
                     # Exemplo simples de verificação (adicione a sua lógica aqui):
                     resposta = requests.get(attachment.url)
