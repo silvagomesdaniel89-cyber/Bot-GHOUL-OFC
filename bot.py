@@ -55,10 +55,9 @@ def home():
     return "O bot está online!"
 
 def run():
-    # O Render fornece a porta, se não, usa a 8080
+    # O Render exige que a porta seja dinâmica
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
-def keep_alive():
     t = Thread(target=run)
     t.start()
 
