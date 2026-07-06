@@ -34,13 +34,16 @@ IMAGENS_BLOQUEADAS = [
     '936c6c4e946cd966',
     '9748a8dcbd4a2579',
     'c48ff019712fe2c6',
-    'ec9397cbd82c24e4',
-    'ec9397cbd82c3464'
 ]
 
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
+
+@bot.event
+async def on_ready():
+    await asyncio.sleep(5)  # Espera 5 segundos antes de fazer qualquer outra coisa
+    print(f'Bot logado como {bot.user}')
 
 @client.event
 async def on_ready():
