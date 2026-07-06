@@ -39,6 +39,7 @@ IMAGENS_BLOQUEADAS = [
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
+
 @client.event
 async def on_ready():
     print('Bot GHOUL SECURITY online e vigiando por Hashes!')
@@ -70,8 +71,7 @@ async def on_message(message):
                             break 
                 except Exception as e:
                     print(f"Erro ao processar imagem: {e}")
-                    
-                    @bot.event
+@bot.event
 async def on_ready():
     await asyncio.sleep(5)  # Espera 5 segundos antes de fazer qualquer outra coisa
     print(f'Bot logado como {bot.user}')
