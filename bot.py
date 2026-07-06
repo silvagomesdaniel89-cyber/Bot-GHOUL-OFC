@@ -34,8 +34,6 @@ IMAGENS_BLOQUEADAS = [
     '936c6c4e946cd966',
     '9748a8dcbd4a2579',
     'c48ff019712fe2c6',
-    'ec9397cbd82c24e4',
-    'ec9397cbd82c3464'
 ]
 
 intents = discord.Intents.default()
