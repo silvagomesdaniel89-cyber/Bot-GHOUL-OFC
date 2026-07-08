@@ -16,7 +16,7 @@ def keep_alive(): Thread(target=run).start()
 
 # Configurações do Bot
 TOKEN = os.environ.get('DISCORD_TOKEN')
-ID_CANAL_LOGS = 123456789012345678  # <--- COLOQUE O ID DO SEU CANAL AQUI!
+ID_CANAL_LOGS = 1272293056812683345  # <--- COLOQUE O ID DO SEU CANAL AQUI!
 
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6']
 CANAIS_IGNORADOS = [1272293056812683345] 
@@ -28,7 +28,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 
 async def enviar_log(motivo, message):
-    canal = client.get_channel(123456789012345678)
+    canal = client.get_channel(1272293056812683345)
     if canal:
         embed = discord.Embed(title="🚫 Mensagem Deletada", color=discord.Color.red())
         embed.add_field(name="👤 Autor", value=f"{message.author.mention} ({message.author.id})", inline=True)
