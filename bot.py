@@ -44,10 +44,41 @@ client = discord.Client(intents=intents)
 async def on_ready():
     print('Bot GHOUL SECURITY online e vigiando por Hashes!')
 
+# Lista de palavras proibidas atualizada
+PALAVRAS_PROIBIDAS = [
+    # Palavrões comuns
+    "corno", "viado", "puta", "poha", "porra", "caralho", "bosta", 
+    "merda", "fdp", "fudido", "arrombado", "otario", "idiota", 
+    "vagabunda", "cu", "buceta", "pau", "cuzão",
+    
+    # Frases e abreviações
+    "toma no cu", "tmnc", "toma no seu cu", "vai tomar no cu",
+    "se foder", "sfoder", "se fode", "vai se foder",
+    "vai se ferrar", "vsf", "pqp"
+]
+
 @client.event
 async def on_message(message):
+    # Ignora mensagens enviadas pelo próprio bot para evitar loops
     if message.author == client.user:
         return
+
+    # Converte o conteúdo da mensagem para minúsculas para garantir a filtragem
+    conteudo = message.content.lower()
+
+    # Verifica se alguma palavra da lista está contida na mensagem
+    if any(palavra in conteudo for palavra in PALAVRAS_PROIBIDAS):
+        try:
+            # Tenta deletar a mensagem
+            await message.delete()
+            print(f"Mensagem de {message.author} deletada por conter termo proibido.")
+        except discord.Forbidden:
+            print("Erro: O bot não tem permissão para deletar mensagens neste canal.")
+        except discord.HTTPException:
+            print("Erro ao tentar deletar a mensagem.")
+
+    # Processa os comandos normalmente caso a mensagem não seja deletada
+    await client.process_commands(message)
 
     CANAIS_IGNORADOS = [1272293056812683345] 
     
