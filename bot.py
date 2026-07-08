@@ -21,7 +21,15 @@ ID_CANAL_LOGS = 1272293056812683345  # <--- COLOQUE O ID DO SEU CANAL AQUI!
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6']
 CANAIS_IGNORADOS = [1272293056812683345] 
 
-PALAVRAS_PROIBIDAS = ["corno", "viado", "puta", "poha", "porra", "caralho", "bosta", "merda", "fdp", "fudido", "arrombado", "otario", "idiota", "vagabunda", "cu", "buceta", "pau", "cuzão", "toma no cu", "tmnc", "toma no seu cu", "vai tomar no cu", "se foder", "sfoder", "se fode", "vai se foder", "vai se ferrar", "vsf", "pqp"]
+PALAVRAS_PROIBIDAS = PALAVRAS_PROIBIDAS = [
+    # Palavrões de peso
+    "arrombado", "vagabunda", "caralho", "bosta", "merda", "fdp", "fudido", "otario", "idiota", "buceta", "cuzao", "viado", "corno", "puta",
+    
+    # Frases e abreviações (estas são seguras, pois ninguém usa "vai tomar no cu" em contexto profissional/normal)
+    "toma no cu", "tmnc", "toma no seu cu", "vai tomar no cu",
+    "se foder", "sfoder", "se fode", "vai se foder",
+    "vai se ferrar", "vsf", "pqp"
+]
 
 intents = discord.Intents.default()
 intents.message_content = True
