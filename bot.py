@@ -33,17 +33,17 @@ CONFIG_SERVIDORES = {
     
     # 2. SERVIDOR BLOX KINGS (Segurança + Auditoria Completa)
     1169685424738947172: { 
-        "LOGS_PUNICOES": 15262557822226269072, 
+        "LOGS_PUNICOES": 1526255782222626907, 
         "BANS": 1526255782222626907,           
-        "LOGS_GERAIS": 1526271422253629681    
+        "LOGS_GERAIS": 1526271422253629681     
     }
 }
 
 # 📍 CONFIGURAÇÃO DOS CANAIS DE TICKET (BLOX KINGS)
-IDCATEGORIA_TICKETS = 1170495547426217995  # <--- ID da categoria onde as salas de ticket vão abrir
-ID_CANAL_COMPRAR = 1169984890046001232     # <--- ID do canal #comprar onde o painel vai ficar fixado
+IDCATEGORIA_TICKETS = 1170495547426217995  
+ID_CANAL_COMPRAR = 1169984890046001232     
 
-# 📍 CONFIGURAÇÃO DOS CARGOS PARA PINGAR EM CADA TICKET (Cole os IDs dos cargos aqui)
+# 📍 CONFIGURAÇÃO DOS CARGOS PARA PINGAR EM CADA TICKET (Substitua pelos IDs reais)
 CARGOS_TICKETS = {
     "Robux": 1317249055058825236,
     "Gamepass": 1317249055058825236,
@@ -53,7 +53,7 @@ CARGOS_TICKETS = {
     "Suporte / Dúvidas": 1317249055058825236
 }
 
-# LINK DO BANNER DA SUA LOJA (Envie a imagem no Discord e copie o link dela aqui)
+# LINK DO BANNER DA SUA LOJA
 LINK_BANNER_LOJA = "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png?ex=6a567398&is=6a552218&hm=48c72ace1d64adf01f929e392ddd9bd64dcd74e31ca0a18d75ae98a8c6f28550.jpg"
 
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6', '91ac6db293ab09a6']
@@ -111,7 +111,6 @@ class TicketDropdown(discord.ui.Select):
         nome_canal = f"🎫-{escolha.lower().replace(' ', '-')}-{membro.name}"
         ticket_channel = await guild.create_text_channel(name=nome_canal, category=categoria, overwrites=permissoes)
 
-        # Pega o ID do cargo configurado lá no topo. Se não tiver ou for 0, usa @everyone por segurança
         id_cargo = CARGOS_TICKETS.get(escolha, 0)
         mencao_cargo = f"<@&{id_cargo}>" if id_cargo != 0 else "@everyone"
 
@@ -136,7 +135,6 @@ class TicketDropdown(discord.ui.Select):
         botao_fechar.callback = fechar_callback
         view_fechar.add_item(botao_fechar)
 
-        # Agora o bot menciona o membro da compra e o cargo configurado para aquela opção
         await ticket_channel.send(content=f"{membro.mention} | {mencao_cargo}", embed=embed_ticket, view=view_fechar)
         await interaction.followup.send(f"✅ Seu ticket de **{escolha}** foi aberto em: {ticket_channel.mention}", ephemeral=True)
 
@@ -146,19 +144,24 @@ class TicketView(discord.ui.View):
         self.add_item(TicketDropdown())
 
 # ==========================================
-# 4. FUNÇÕES AUXILIARES DE LOGS
+# 4. FUNÇÕES AUXILIARES DE LOGS (DESIGN PREMIUM)
 # ==========================================
 async def enviar_log_delecao(message, motivo):
     guild_id = message.guild.id
     if guild_id in CONFIG_SERVIDORES:
-        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_PUNICOES"])
+        canal_id = CONFIG_SERVIDORES[guild_id].get("LOGS_GERAIS") if "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id] else CONFIG_SERVIDORES[guild_id]["LOGS_PUNICOES"]
+        canal = client.get_channel(canal_id)
         if canal:
-            embed = discord.Embed(title="🚫 Mensagem Deletada Pelo Filtro", color=discord.Color.red())
-            embed.add_field(name="👤 Autor", value=f"{message.author.mention}\n({message.author.id})", inline=False)
-            embed.add_field(name="💬 Canal", value=message.channel.mention, inline=False)
-            embed.add_field(name="📝 Motivo", value=motivo, inline=False)
-            embed.add_field(name="Conteúdo:", value=(message.content or "Anexo/Imagem"), inline=False)
+            embed = discord.Embed(title="🛡️ GHOUL SECURITY - Filtro Automático", color=0xdd2e44, timestamp=message.created_at)
+            embed.description = (
+                f"👤 **Usuário:** {message.author.mention} (`{message.author.id}`)\n"
+                f"💬 **Canal:** {message.channel.mention}\n"
+                f"🚨 **Ocorrência:** `{motivo}`\n\n"
+                f"**Mensagem Deletada:**\n"
+                f"```css\n{message.content or 'Sem conteúdo de texto'}\n```"
+            )
             if message.author.display_avatar: embed.set_thumbnail(url=message.author.display_avatar.url)
+            embed.set_footer(text="Segurança Ativa Blox Kings")
             await canal.send(embed=embed)
 
 async def enviar_log_ban(member, image_bytes, guild_id, motivo="Hackeado"):
@@ -175,29 +178,35 @@ async def enviar_log_ban(member, image_bytes, guild_id, motivo="Hackeado"):
                 await canal.send(content=f"{texto_log} *Verifique o histórico ou logs gerais*")
 
 # ==========================================
-# 5. EVENTOS DO BOT
+# 5. EVENTOS DO BOT (AUDITORIA LIMPA)
 # ==========================================
 @client.event
 async def on_ready():
     print(f"Bot logado com sucesso como {client.user}")
     client.add_view(TicketView())
 
-# 5.1. MENSAGEM APAGADA (AUDITORIA BLOX KINGS)
+# 5.1. MENSAGEM DELETADA POR USUÁRIOS
 @client.event
 async def on_message_delete(message):
     if message.author.bot or not message.guild: return
-    if any(p in message.content.lower() for p in PALAVRAS_PROIBIDAS + FRASES_SCAM) or "discord.gg" in message.content.lower() or "discord.com/invite" in message.content.lower(): return
+    conteudo_lower = message.content.lower()
+    if any(p in conteudo_lower for p in PALAVRAS_PROIBIDAS + FRASES_SCAM) or "discord.gg" in conteudo_lower or "discord.com/invite" in conteudo_lower: return
     
     guild_id = message.guild.id
     if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
         canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
         if canal:
-            embed = discord.Embed(title="🗑️ Mensagem Apagada", color=discord.Color.orange())
-            embed.add_field(name="Autor", value=message.author.mention, inline=False)
-            embed.add_field(name="Conteúdo", value=(message.content or "Sem texto/Imagem")[:1024], inline=False)
+            embed = discord.Embed(title="🗑️ Mensagem Apagada", color=0xf47fff)
+            embed.description = (
+                f"👤 **Autor:** {message.author.mention} (`{message.author.id}`)\n"
+                f"💬 **Canal:** {message.channel.mention}\n\n"
+                f"**Conteúdo Original:**\n"
+                f"```ini\n[{message.content or 'Sem texto / Imagem'}]\n```"
+            )
+            embed.set_footer(text="Logs Gerais Blox Kings")
             await canal.send(embed=embed)
 
-# 5.2. MENSAGEM EDITADA (AUDITORIA BLOX KINGS)
+# 5.2. MENSAGEM EDITADA
 @client.event
 async def on_message_edit(before, after):
     if before.author.bot or not before.guild or before.content == after.content: return
@@ -205,51 +214,73 @@ async def on_message_edit(before, after):
     if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
         canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
         if canal:
-            embed = discord.Embed(title="✏️ Mensagem Editada", color=discord.Color.blue())
-            embed.add_field(name="Autor", value=before.author.mention, inline=False)
-            embed.add_field(name="Antes", value=(before.content or "Vazio")[:512], inline=True)
-            embed.add_field(name="Depois", value=(after.content or "Vazio")[:512], inline=True)
+            embed = discord.Embed(title="✏️ Mensagem Editada", color=0x3b82f6)
+            embed.description = (
+                f"👤 **Autor:** {before.author.mention}\n"
+                f"💬 **Canal:** {before.channel.mention}\n\n"
+                f"**Antes:**\n```diff\n- {before.content or 'Vazio'}\n```\n"
+                f"**Depois:**\n```diff\n+ {after.content or 'Vazio'}\n```"
+            )
+            embed.set_footer(text="Logs Gerais Blox Kings")
             await canal.send(embed=embed)
 
-# 5.3. PERFIL RE-NOMEADO (AUDITORIA BLOX KINGS)
+# 5.3. ALTERAÇÃO DE APELIDO
 @client.event
 async def on_member_update(before, after):
     guild_id = before.guild.id
     if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
         canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
         if canal and before.nick != after.nick:
-            embed = discord.Embed(title="👤 Apelido Alterado", color=discord.Color.purple())
-            embed.add_field(name="Membro", value=before.mention, inline=False)
-            embed.add_field(name="Antigo", value=before.nick or before.name, inline=True)
-            embed.add_field(name="Novo", value=after.nick or after.name, inline=True)
+            embed = discord.Embed(title="👤 Apelido Alterado", color=0x9b59b6)
+            embed.description = (
+                f"👤 **Membro:** {before.mention} (`{before.id}`)\n\n"
+                f"❌ **Antigo:** `{before.nick or before.name}`\n"
+                f"✅ **Novo:** `{after.nick or after.name}`"
+            )
+            embed.set_footer(text="Logs Gerais Blox Kings")
             await canal.send(embed=embed)
 
-# 5.4. VERIFICAÇÃO DE MENSAGENS / COMANDOS / FILTROS
+# 5.4. TELEMETRIA E FILTROS DE SEGURANÇA
 @client.event
 async def on_message(message):
+    if not message.author.bot and message.guild:
+        print(f"[DIAGNÓSTICO] Mensagem de {message.author.name} no canal {message.channel.name} (ID: {message.channel.id}): '{message.content}'")
+
     if message.author == client.user or not message.guild: return
-    conteudo = message.content.lower()
+    conteudo = message.content.strip().lower()
     
     # COMANDO PARA SETAR O PAINEL DE TICKETS (Apenas Admins)
-    if message.content == "!setup_ticket" and message.author.guild_permissions.administrator:
-        # Trava de segurança: impede o comando se for digitado fora do canal correto
-        if message.channel.id != ID_CANAL_COMPRAR:
-            await message.channel.send(f"❌ Esse comando só pode ser usado no canal <#{ID_CANAL_COMPRAR}>!", delete_after=5)
-            await message.delete()
+    if conteudo == "!setup_ticket":
+        print(f"[DIAGNÓSTICO] Comando !setup_ticket detectado! Verificando permissões...")
+        
+        if not message.author.guild_permissions.administrator:
+            print(f"[DIAGNÓSTICO] {message.author.name} não possui cargo administrativo.")
             return
 
-        await message.delete()
-        embed_painel = discord.Embed(
-            title="🎫 CENTRAL DE ATENDIMENTO - BLOX KINGS",
-            description="Precisa de ajuda, deseja comprar Robux, Frutas Permanentes ou Contas?\n"
-                        "Selecione a categoria correta no menu abaixo para abrir o seu ticket.\n\n"
-                        "⚠️ **Lembre-se:** Não abra tickets sem necessidade para evitar punições.",
-            color=0x2f3136
-        )
-        embed_painel.set_image(url=LINK_BANNER_LOJA)
-        
-        await message.channel.send(embed=embed_painel, view=TicketView())
-        return
+        try:
+            print(f"[DIAGNÓSTICO] Comparando Canal Atual ({message.channel.id}) com Canal Configurado ({ID_CANAL_COMPRAR})")
+            
+            if int(message.channel.id) != int(ID_CANAL_COMPRAR):
+                print(f"[DIAGNÓSTICO] Comando abortado: ID de canal diferente.")
+                await message.channel.send(f"❌ Esse comando só pode ser usado no canal <#{ID_CANAL_COMPRAR}>!", delete_after=5)
+                await message.delete()
+                return
+
+            await message.delete()
+            embed_painel = discord.Embed(
+                title="🎫 CENTRAL DE ATENDIMENTO - BLOX KINGS",
+                description="Precisa de ajuda, deseja comprar Robux, Frutas Permanentes ou Contas?\n"
+                            "Selecione a categoria correta no menu abaixo para abrir o seu ticket.\n\n"
+                            "⚠️ **Lembre-se:** Não abra tickets sem necessidade para evitar punições.",
+                color=0x2f3136
+            )
+            embed_painel.set_image(url=LINK_BANNER_LOJA)
+            await message.channel.send(embed=embed_painel, view=TicketView())
+            print("✅ [SUCESSO] Painel de tickets enviado com sucesso!")
+            return
+        except Exception as e:
+            print(f"❌ [ERRO CRÍTICO] Falha ao enviar painel de ticket: {e}")
+            return
 
     # --- FILTRO 1: FRASE DE BOT HACKEADO (BAN IMEDIATO) ---
     if any(frase in conteudo for frase in FRASES_SCAM):
@@ -270,12 +301,12 @@ async def on_message(message):
         except Exception as e: print(f"Erro ao aplicar mute por link: {e}")
         return
 
-    # --- FILTRO 3: PALAVRÕES ---
+    # --- FILTRO 3: PALAVRÕES (APENAS DELETA A MENSAGEM, SEM APLICAR MUTE) ---
     if any(palavra in conteudo for palavra in PALAVRAS_PROIBIDAS):
         try:
             await message.delete()
             await enviar_log_delecao(message, "Palavrão/Xingamento detectado")
-        except Exception as e: print(f"Erro ao deletar: {e}")
+        except Exception as e: print(f"Erro ao deletar xingamento: {e}")
         return
 
     # --- FILTRO 4: IMAGENS PROIBIDAS ---
