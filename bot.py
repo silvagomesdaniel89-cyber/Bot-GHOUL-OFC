@@ -30,7 +30,7 @@ PALAVRAS_PROIBIDAS = [
     "arrombado", "vagabunda", "caralho", "bosta", "merda", "fdp", "fudido", "otario", "idiota", 
     "buceta", "cuzao", "viado", "corno", "puta", "toma no cu", "tmnc", "toma no seu cu", 
     "vai tomar no cu", "se foder", "sfoder", "se fode", "vai se foder", "vai se ferrar", 
-    "vsf", "pqp", "fds", "tomar no cu"
+    "vsf", "pqp", "fds", "tomar no cu", "gay", "veado", "LGBT", "ELIGEBETE"
 ]
 
 intents = discord.Intents.default()
