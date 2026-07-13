@@ -10,7 +10,7 @@ from datetime import timedelta
 from threading import Thread
 
 # ==========================================
-# 1. SERVIDOR WEB (Para manter online)
+# 1. SERVIDOR WEB (Para manter online no Render)
 # ==========================================
 app = Flask('')
 @app.route('/')
@@ -23,7 +23,7 @@ Thread(target=run, daemon=True).start()
 # ==========================================
 TOKEN = os.environ.get('DISCORD_TOKEN')
 
-# SUBISTITUA OS ZEROS PELOS IDS REAIS DO SEU DISCORD
+# SUBSTITUA OS ZEROS PELOS IDS REAIS DO SEU DISCORD
 CONFIG_SERVIDORES = {
     # 1. SERVIDOR GHOUL (Apenas Segurança)
     1143627184842493992: { 
@@ -35,12 +35,26 @@ CONFIG_SERVIDORES = {
     1169685424738947172: { 
         "LOGS_PUNICOES": 15262557822226269072, 
         "BANS": 1526255782222626907,           
-        "LOGS_GERAIS": 1526271422253629681     
+        "LOGS_GERAIS": 1526271422253629681    
     }
 }
 
-# ID da categoria onde as salas de Ticket serão criadas no BLOX KINGS
-IDCATEGORIA_TICKETS = 1170495547426217995  
+# 📍 CONFIGURAÇÃO DOS CANAIS DE TICKET (BLOX KINGS)
+IDCATEGORIA_TICKETS = 1170495547426217995  # <--- ID da categoria onde as salas de ticket vão abrir
+ID_CANAL_COMPRAR = 1169984890046001232     # <--- ID do canal #comprar onde o painel vai ficar fixado
+
+# 📍 CONFIGURAÇÃO DOS CARGOS PARA PINGAR EM CADA TICKET (Cole os IDs dos cargos aqui)
+CARGOS_TICKETS = {
+    "Robux": 1317249055058825236,
+    "Gamepass": 1317249055058825236,
+    "Frutas Perm": 1317249055058825236,
+    "Frutas Físicas": 1317249055058825236,
+    "Contas GHM/Fruta": 1317249055058825236,
+    "Suporte / Dúvidas": 1317249055058825236
+}
+
+# LINK DO BANNER DA SUA LOJA (Envie a imagem no Discord e copie o link dela aqui)
+LINK_BANNER_LOJA = "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png?ex=6a567398&is=6a552218&hm=48c72ace1d64adf01f929e392ddd9bd64dcd74e31ca0a18d75ae98a8c6f28550.jpg"
 
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6', '91ac6db293ab09a6']
 
@@ -53,7 +67,7 @@ PALAVRAS_PROIBIDAS = [
 
 FRASES_SCAM = [
     "check my bio", "shes on cam", "she's squirting", "squirt", "look my bio", 
-    "crypto casino", "free usdt", "withdrawal success"
+    "crypto casino", "free usdt", "withdrawal success", "check my bi0"
 ]
 
 intents = discord.Intents.default()
@@ -97,9 +111,13 @@ class TicketDropdown(discord.ui.Select):
         nome_canal = f"🎫-{escolha.lower().replace(' ', '-')}-{membro.name}"
         ticket_channel = await guild.create_text_channel(name=nome_canal, category=categoria, overwrites=permissoes)
 
+        # Pega o ID do cargo configurado lá no topo. Se não tiver ou for 0, usa @everyone por segurança
+        id_cargo = CARGOS_TICKETS.get(escolha, 0)
+        mencao_cargo = f"<@&{id_cargo}>" if id_cargo != 0 else "@everyone"
+
         embed_ticket = discord.Embed(
             title=f"🏪 BLOX KINGS - Ticket de {escolha}",
-            description=f"Olá {membro.mention}, obrigado por entrar em contato!\nNossa equipe já foi notificada e logo irá te atender.\n\n"
+            description=f"Olá {membro.mention}, obrigado por entrar em contato!\nA equipe responsável {mencao_cargo} já foi notificada.\n\n"
                         f"**Assunto selecionado:** `{escolha}`\n\n"
                         "Se veio fazer uma compra, envie o seu pedido para agilizar!",
             color=discord.Color.green()
@@ -118,7 +136,8 @@ class TicketDropdown(discord.ui.Select):
         botao_fechar.callback = fechar_callback
         view_fechar.add_item(botao_fechar)
 
-        await ticket_channel.send(content=f"{membro.mention} | @everyone", embed=embed_ticket, view=view_fechar)
+        # Agora o bot menciona o membro da compra e o cargo configurado para aquela opção
+        await ticket_channel.send(content=f"{membro.mention} | {mencao_cargo}", embed=embed_ticket, view=view_fechar)
         await interaction.followup.send(f"✅ Seu ticket de **{escolha}** foi aberto em: {ticket_channel.mention}", ephemeral=True)
 
 class TicketView(discord.ui.View):
@@ -213,6 +232,12 @@ async def on_message(message):
     
     # COMANDO PARA SETAR O PAINEL DE TICKETS (Apenas Admins)
     if message.content == "!setup_ticket" and message.author.guild_permissions.administrator:
+        # Trava de segurança: impede o comando se for digitado fora do canal correto
+        if message.channel.id != ID_CANAL_COMPRAR:
+            await message.channel.send(f"❌ Esse comando só pode ser usado no canal <#{ID_CANAL_COMPRAR}>!", delete_after=5)
+            await message.delete()
+            return
+
         await message.delete()
         embed_painel = discord.Embed(
             title="🎫 CENTRAL DE ATENDIMENTO - BLOX KINGS",
@@ -221,6 +246,8 @@ async def on_message(message):
                         "⚠️ **Lembre-se:** Não abra tickets sem necessidade para evitar punições.",
             color=0x2f3136
         )
+        embed_painel.set_image(url=LINK_BANNER_LOJA)
+        
         await message.channel.send(embed=embed_painel, view=TicketView())
         return
 
