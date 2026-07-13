@@ -19,41 +19,24 @@ def keep_alive():
 
 # --- Configurações ---
 TOKEN = os.environ.get('DISCORD_TOKEN')
-ID_CANAL_LOGS = 1272293056812683345  # Canal de deleções
-ID_CANAL_BANS = 1468415943251202252  # Canal de banimentos
+ID_CANAL_LOGS = 1272293056812683345 
+ID_CANAL_BANS = 1468415943251202252 
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6', '91ac6db293ab09a6']
 CANAIS_IGNORADOS = [1272293056812683345] 
 
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True # ESSENCIAL PARA BANIR
+intents.members = True
 client = discord.Client(intents=intents)
-
-# --- Funções de Log ---
-async def enviar_log_delecao(motivo, message):
-    canal = client.get_channel(ID_CANAL_LOGS)
-    if canal:
-        embed = discord.Embed(title="🚫 Mensagem Deletada", color=discord.Color.red())
-        embed.add_field(name="Autor", value=f"{message.author.mention}", inline=True)
-        embed.add_field(name="Motivo", value=motivo, inline=False)
-        await canal.send(embed=embed)
-
-async def enviar_log_ban(member, motivo, url_imagem):
-    canal = client.get_channel(ID_CANAL_BANS)
-    if canal:
-        embed = discord.Embed(title="🔨 Usuário Banido", color=discord.Color.dark_red())
-        embed.add_field(name="Usuário", value=f"{member.name} ({member.id})", inline=True)
-        embed.add_field(name="Motivo", value=motivo, inline=False)
-        if url_imagem: embed.set_image(url=url_imagem)
-        await canal.send(embed=embed)
 
 # --- Bot ---
 @client.event
 async def on_ready():
-    print(f'Bot {client.user} está online!')
+    print(f'Bot {client.user} esta pronto e monitorando!')
 
 @client.event
 async def on_message(message):
+    # O bot ignora a si mesmo e administradores (para você poder testar sem ser banido)
     if message.author == client.user or message.author.guild_permissions.administrator: 
         return
 
@@ -62,8 +45,11 @@ async def on_message(message):
     palavras_proibidas = ["arrombado", "vagabunda", "caralho", "bosta", "merda", "fdp", "fudido", "vsf", "pqp"]
     for palavra in palavras_proibidas:
         if re.search(r'\b' + re.escape(palavra) + r'\b', conteudo):
-            await message.delete()
-            await enviar_log_delecao("Palavrão detectado", message)
+            try:
+                await message.delete()
+                print(f"Palavra proibida deletada de {message.author}")
+            except Exception as e:
+                print(f"Erro ao deletar palavra: {e}")
             return
 
     # 2. Filtro de Imagens
@@ -71,19 +57,31 @@ async def on_message(message):
         for att in message.attachments:
             if att.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                 try:
-                    img = Image.open(BytesIO(requests.get(att.url).content))
+                    response = requests.get(att.url)
+                    img = Image.open(BytesIO(response.content))
                     hash_atual = imagehash.phash(img)
+                    
                     for h_str in IMAGENS_BLOQUEADAS:
                         if (hash_atual - imagehash.hex_to_hash(h_str)) < 10:
-                            url_da_imagem = att.url
-                            await message.delete()
+                            print(f"Imagem proibida detectada de {message.author}")
+                            
+                            # Tenta deletar e banir
                             try:
-                                await message.author.ban(reason="Uso de imagem proibida")
-                                await enviar_log_ban(message.author, "Banido automaticamente.", url_da_imagem)
+                                await message.delete()
+                                await message.author.ban(reason="Uso de imagem proibida.")
+                                
+                                # Envia log de banimento com a imagem
+                                canal_ban = client.get_channel(ID_CANAL_BANS)
+                                if canal_ban:
+                                    embed = discord.Embed(title="🔨 Usuário Banido", color=discord.Color.dark_red())
+                                    embed.add_field(name="Usuário", value=message.author.mention, inline=True)
+                                    embed.set_image(url=att.url)
+                                    await canal_ban.send(embed=embed)
                             except Exception as e:
-                                print(f"Erro ao banir: {e}")
+                                print(f"ERRO CRITICO AO BANIR/DELETAR: {e}")
                             return
-                except: pass
+                except Exception as e:
+                    print(f"Erro no processamento da imagem: {e}")
 
 if __name__ == "__main__":
     keep_alive()
