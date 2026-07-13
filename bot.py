@@ -34,7 +34,7 @@ CONFIG_SERVIDORES = {
     # 2. SERVIDOR BLOX KINGS (Segurança + Auditoria Completa)
     1169685424738947172: { 
         "LOGS_PUNICOES": 1526255782222626907, 
-        "BANS": 1526255782222626907,           
+        "BANS": 1526255782222626907, # <--- TODOS OS MUTES E BANS VÃO APARECER AQUI!          
         "LOGS_GERAIS": 1526271422253629681     
     }
 }
@@ -43,7 +43,7 @@ CONFIG_SERVIDORES = {
 IDCATEGORIA_TICKETS = 1170495547426217995  
 ID_CANAL_COMPRAR = 1169984890046001232     
 
-# 📍 CONFIGURAÇÃO DOS CARGOS PARA PINGAR EM CADA TICKET (Substitua pelos IDs reais)
+# 📍 CONFIGURAÇÃO DOS CARGOS PARA PINGAR EM CADA TICKET
 CARGOS_TICKETS = {
     "Robux": 1317249055058825236,
     "Gamepass": 1317249055058825236,
@@ -58,11 +58,13 @@ LINK_BANNER_LOJA = "https://cdn.discordapp.com/attachments/1183819407013707947/1
 
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6', '91ac6db293ab09a6']
 
+# 🤬 LISTA COMPLETA E ATUALIZADA DE XINGAMENTOS SOLICITADOS
 PALAVRAS_PROIBIDAS = [
-    "arrombado", "vagabunda", "caralho", "bosta", "merda", "fdp", "fudido", "otario", "idiota", 
-    "buceta", "cuzao", "viado", "corno", "puta", "toma no cu", "tmnc", "toma no seu cu", 
-    "vai tomar no cu", "se foder", "sfoder", "se fode", "vai se foder", "vai se ferrar", 
-    "vsf", "pqp", "fds"
+    "puta que pariu", "puta", "filha da puta", "desgraçado", "desgracado", "resto de aborto", 
+    "pau no cu", "caralho", "buceta", "pica", "cu", "trouxa", "arrombado", "cara de cu", 
+    "porra", "cuzão", "cuzao", "fudido", "foda", "vai tomar no cu", "vai tomar no seu cu", 
+    "toma no cu", "tmnc", "imbecil", "vagabundo", "sáfado", "safado", "corno", "gay", 
+    "viadinho", "viado", "lixo", "vadia", "vagina", "arrombada", "vagabunda", "idiota", "otario"
 ]
 
 FRASES_SCAM = [
@@ -144,48 +146,53 @@ class TicketView(discord.ui.View):
         self.add_item(TicketDropdown())
 
 # ==========================================
-# 4. FUNÇÕES AUXILIARES DE LOGS (DESIGN PREMIUM)
+# 4. FUNÇÕES AUXILIARES DE LOGS (UNIFICADOS)
 # ==========================================
-async def enviar_log_delecao(message, motivo):
-    guild_id = message.guild.id
+async def enviar_log_punicao_unificado(member, guild_id, acao, motivo, message=None, image_bytes=None):
+    """Envia todos os mutes, timeouts e bans para o mesmo canal de BANS para centralização."""
     if guild_id in CONFIG_SERVIDORES:
-        canal_id = CONFIG_SERVIDORES[guild_id].get("LOGS_GERAIS") if "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id] else CONFIG_SERVIDORES[guild_id]["LOGS_PUNICOES"]
+        canal_id = CONFIG_SERVIDORES[guild_id]["BANS"]
         canal = client.get_channel(canal_id)
         if canal:
-            embed = discord.Embed(title="🛡️ GHOUL SECURITY - Filtro Automático", color=0xdd2e44, timestamp=message.created_at)
-            embed.description = (
-                f"👤 **Usuário:** {message.author.mention} (`{message.author.id}`)\n"
-                f"💬 **Canal:** {message.channel.mention}\n"
-                f"🚨 **Ocorrência:** `{motivo}`\n\n"
-                f"**Mensagem Deletada:**\n"
-                f"```css\n{message.content or 'Sem conteúdo de texto'}\n```"
-            )
-            if message.author.display_avatar: embed.set_thumbnail(url=message.author.display_avatar.url)
-            embed.set_footer(text="Segurança Ativa Blox Kings")
-            await canal.send(embed=embed)
-
-async def enviar_log_ban(member, image_bytes, guild_id, motivo="Hackeado"):
-    if guild_id in CONFIG_SERVIDORES:
-        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["BANS"])
-        if canal:
-            texto_log = f"**Id/Nick:** {member.id}/{member.name}\n**Staff:** @GHOUL\n**Ação:** ban\n**Motivo:** {motivo}\n**Prova:**"
+            texto_log = f"**Id/Nick:** {member.id}/{member.name}\n**Staff:** @GHOUL\n**Ação:** {acao.upper()}\n**Motivo:** {motivo}\n**Prova:**"
+            
             embed = discord.Embed(color=0x2f3136)
+            if message and message.content:
+                embed.description = f"**Mensagem flagrada:**\n```css\n{message.content}\n```"
+                if message.channel:
+                    embed.description += f"\n📍 **Canal:** {message.channel.mention}"
+            
             if image_bytes:
                 arquivo = discord.File(fp=BytesIO(image_bytes), filename="prova.png")
                 embed.set_image(url="attachment://prova.png")
                 await canal.send(content=texto_log, file=arquivo, embed=embed)
             else:
-                await canal.send(content=f"{texto_log} *Verifique o histórico ou logs gerais*")
+                await canal.send(content=texto_log, embed=embed if message else None)
+
+async def enviar_log_delecao_simples(message, motivo):
+    """Usado apenas para xingamentos comuns (vai para logs gerais para não poluir o canal de bans)"""
+    guild_id = message.guild.id
+    if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
+        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
+        if canal:
+            embed = discord.Embed(title="🛡️ GHOUL SECURITY - Mensagem Apagada", color=0xdd2e44, timestamp=message.created_at)
+            embed.description = (
+                f"👤 **Usuário:** {message.author.mention} (`{message.author.id}`)\n"
+                f"💬 **Canal:** {message.channel.mention}\n"
+                f"🚨 **Ocorrência:** `{motivo}`\n\n"
+                f"**Conteúdo:**\n```css\n{message.content}\n```"
+            )
+            embed.set_footer(text="Filtro de Conteúdo Blox Kings")
+            await canal.send(embed=embed)
 
 # ==========================================
-# 5. EVENTOS DO BOT (AUDITORIA LIMPA)
+# 5. EVENTOS E AUDITORIA DO BOT
 # ==========================================
 @client.event
 async def on_ready():
     print(f"Bot logado com sucesso como {client.user}")
     client.add_view(TicketView())
 
-# 5.1. MENSAGEM DELETADA POR USUÁRIOS
 @client.event
 async def on_message_delete(message):
     if message.author.bot or not message.guild: return
@@ -200,13 +207,10 @@ async def on_message_delete(message):
             embed.description = (
                 f"👤 **Autor:** {message.author.mention} (`{message.author.id}`)\n"
                 f"💬 **Canal:** {message.channel.mention}\n\n"
-                f"**Conteúdo Original:**\n"
-                f"```ini\n[{message.content or 'Sem texto / Imagem'}]\n```"
+                f"**Conteúdo Original:**\n```ini\n[{message.content or 'Sem texto / Imagem'}]\n```"
             )
-            embed.set_footer(text="Logs Gerais Blox Kings")
             await canal.send(embed=embed)
 
-# 5.2. MENSAGEM EDITADA
 @client.event
 async def on_message_edit(before, after):
     if before.author.bot or not before.guild or before.content == after.content: return
@@ -221,10 +225,8 @@ async def on_message_edit(before, after):
                 f"**Antes:**\n```diff\n- {before.content or 'Vazio'}\n```\n"
                 f"**Depois:**\n```diff\n+ {after.content or 'Vazio'}\n```"
             )
-            embed.set_footer(text="Logs Gerais Blox Kings")
             await canal.send(embed=embed)
 
-# 5.3. ALTERAÇÃO DE APELIDO
 @client.event
 async def on_member_update(before, after):
     guild_id = before.guild.id
@@ -237,10 +239,11 @@ async def on_member_update(before, after):
                 f"❌ **Antigo:** `{before.nick or before.name}`\n"
                 f"✅ **Novo:** `{after.nick or after.name}`"
             )
-            embed.set_footer(text="Logs Gerais Blox Kings")
             await canal.send(embed=embed)
 
-# 5.4. TELEMETRIA E FILTROS DE SEGURANÇA
+# ==========================================
+# 6. PROCESSAMENTO E FILTROS DE SEGURANÇA
+# ==========================================
 @client.event
 async def on_message(message):
     if not message.author.bot and message.guild:
@@ -249,19 +252,11 @@ async def on_message(message):
     if message.author == client.user or not message.guild: return
     conteudo = message.content.strip().lower()
     
-    # COMANDO PARA SETAR O PAINEL DE TICKETS (Apenas Admins)
+    # SETUP DO PAINEL DE TICKETS
     if conteudo == "!setup_ticket":
-        print(f"[DIAGNÓSTICO] Comando !setup_ticket detectado! Verificando permissões...")
-        
-        if not message.author.guild_permissions.administrator:
-            print(f"[DIAGNÓSTICO] {message.author.name} não possui cargo administrativo.")
-            return
-
+        if not message.author.guild_permissions.administrator: return
         try:
-            print(f"[DIAGNÓSTICO] Comparando Canal Atual ({message.channel.id}) com Canal Configurado ({ID_CANAL_COMPRAR})")
-            
             if int(message.channel.id) != int(ID_CANAL_COMPRAR):
-                print(f"[DIAGNÓSTICO] Comando abortado: ID de canal diferente.")
                 await message.channel.send(f"❌ Esse comando só pode ser usado no canal <#{ID_CANAL_COMPRAR}>!", delete_after=5)
                 await message.delete()
                 return
@@ -276,40 +271,40 @@ async def on_message(message):
             )
             embed_painel.set_image(url=LINK_BANNER_LOJA)
             await message.channel.send(embed=embed_painel, view=TicketView())
-            print("✅ [SUCESSO] Painel de tickets enviado com sucesso!")
             return
         except Exception as e:
-            print(f"❌ [ERRO CRÍTICO] Falha ao enviar painel de ticket: {e}")
+            print(f"❌ Erro ao enviar painel de ticket: {e}")
             return
 
-    # --- FILTRO 1: FRASE DE BOT HACKEADO (BAN IMEDIATO) ---
+    # --- FILTRO 1: FRASE DE BOT HACKEADO / SCAM (MUTE DE 7 DIAS -> LOG NO CANAL DE BANS) ---
     if any(frase in conteudo for frase in FRASES_SCAM):
         try:
             await message.delete()
-            await message.author.ban(reason="Bot de Spam / Conta Hackeada")
-            await enviar_log_ban(message.author, None, message.guild.id, motivo="Postou Spam/Link Malicioso (Conta Hackeada)")
+            duracao_scam = timedelta(days=7)
+            await message.author.timeout(duracao_scam, reason="Filtro Anti-Scam: Link Malicioso / Conta Possivelmente Hackeada")
+            await enviar_log_punicao_unificado(message.author, message.guild.id, acao="mute (7 dias)", motivo="Disparo de Frase Scam/Link Malicioso", message=message)
         except Exception as e: print(f"Erro no filtro de Scam: {e}")
         return
 
-    # --- FILTRO 2: CONVITES DO DISCORD (MUTE DE 1 HORA) ---
+    # --- FILTRO 2: CONVITES DO DISCORD (MUTE DE 1 HORA -> LOG NO CANAL DE BANS) ---
     if "discord.gg/" in conteudo or "discord.com/invite/" in conteudo:
         try:
             await message.delete()
-            duracao = timedelta(minutes=60)
-            await message.author.timeout(duracao, reason="Envio de link de outro servidor")
-            await enviar_log_delecao(message, "Link de Servidor Detectado (Usuário Mutado por 1h)")
+            duracao_link = timedelta(minutes=60)
+            await message.author.timeout(duracao_link, reason="Envio de link de outro servidor do Discord")
+            await enviar_log_punicao_unificado(message.author, message.guild.id, acao="mute (1 hora)", motivo="Divulgação / Envio de convite externo", message=message)
         except Exception as e: print(f"Erro ao aplicar mute por link: {e}")
         return
 
-    # --- FILTRO 3: PALAVRÕES (APENAS DELETA A MENSAGEM, SEM APLICAR MUTE) ---
-    if any(palavra in conteudo for palavra in PALAVRAS_PROIBIDAS):
+    # --- FILTRO 3: PALAVRÕES (DELETA A MENSAGEM -> VAI APENAS PARA OS LOGS GERAIS) ---
+    if any(palavra in conteudo for palabra in PALAVRAS_PROIBIDAS):
         try:
             await message.delete()
-            await enviar_log_delecao(message, "Palavrão/Xingamento detectado")
+            await enviar_log_delecao_simples(message, "Palavrão/Xingamento proibido detectado")
         except Exception as e: print(f"Erro ao deletar xingamento: {e}")
         return
 
-    # --- FILTRO 4: IMAGENS PROIBIDAS ---
+    # --- FILTRO 4: IMAGENS PROIBIDAS (BAN IDÊNTICO -> LOG NO CANAL DE BANS) ---
     if message.attachments:
         for att in message.attachments:
             if att.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
@@ -320,8 +315,8 @@ async def on_message(message):
                     for h_str in IMAGENS_BLOQUEADAS:
                         if (hash_atual - imagehash.hex_to_hash(h_str)) < 10:
                             await message.delete()
-                            await message.author.ban(reason="Hackeado")
-                            await enviar_log_ban(message.author, img_data, message.guild.id)
+                            await message.author.ban(reason="Envio de imagem proibida / Hacker")
+                            await enviar_log_punicao_unificado(message.author, message.guild.id, acao="ban", motivo="Postou imagem bloqueada pelo sistema", message=message, image_bytes=img_data)
                             return
                 except Exception as e: print(f"Erro processando imagem: {e}")
 
