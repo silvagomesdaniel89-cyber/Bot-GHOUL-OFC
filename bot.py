@@ -39,7 +39,7 @@ intents.members = True
 client = discord.Client(intents=intents)
 
 # ==========================================
-# 3. SISTEMA DE LOGS (IDÊNTICOS AOS PRINTS)
+# 3. SISTEMA DE LOGS 
 # ==========================================
 
 # LOG DE MENSAGEM APAGADA (XINGAMENTO)
@@ -47,8 +47,6 @@ async def enviar_log_delecao(message, motivo):
     canal = client.get_channel(ID_CANAL_LOGS)
     if canal:
         embed = discord.Embed(title="🚫 Mensagem Deletada", color=discord.Color.red())
-        
-        # Formatação idêntica ao print
         embed.add_field(name="👤 Autor", value=f"{message.author.mention}\n({message.author.id})", inline=False)
         embed.add_field(name="💬 Canal", value=message.channel.mention, inline=False)
         embed.add_field(name="📝 Motivo", value=motivo, inline=False)
@@ -56,33 +54,35 @@ async def enviar_log_delecao(message, motivo):
         conteudo = message.content if message.content else "Anexo/Imagem"
         embed.add_field(name="Conteúdo:", value=conteudo, inline=False)
         
-        # Puxa a foto de perfil do usuário (igual ao seu print)
         if message.author.display_avatar:
             embed.set_thumbnail(url=message.author.display_avatar.url)
             
         embed.set_footer(text=f"ID da Mensagem: {message.id}")
         await canal.send(embed=embed)
 
-# LOG DE BANIMENTO (IMAGEM HACKER/SCAM)
-async def enviar_log_ban(member, url):
+# LOG DE BANIMENTO COM IMAGEM FIXADA
+async def enviar_log_ban(member, image_bytes):
     canal = client.get_channel(ID_CANAL_BANS)
     if canal:
-        # Formatação do texto do log de banimento idêntica ao print
         texto_log = (
-            f"**Id/Nick:** {member.id} ({member.name})\n"
+            f"**Id/Nick:** {member.id}/{member.name}\n"
             f"**Staff:** @GHOUL\n"
             f"**Ação:** ban\n"
             f"**Motivo:** Hackeado\n"
             f"**Prova:**"
         )
-        # Embed contendo apenas a miniatura da prova
-        embed = discord.Embed(color=0x2f3136)
-        embed.set_image(url=url) 
         
-        await canal.send(content=texto_log, embed=embed)
+        # Transforma os bytes baixados em um arquivo real para o Discord
+        arquivo_imagem = discord.File(fp=BytesIO(image_bytes), filename="prova.png")
+        
+        embed = discord.Embed(color=0x2f3136)
+        embed.set_image(url="attachment://prova.png") # Linka o arquivo no embed
+        
+        # Envia o texto, o arquivo e o embed juntos
+        await canal.send(content=texto_log, file=arquivo_imagem, embed=embed)
 
 # ==========================================
-# 4. EVENTOS DO BOT (AÇÃO PRINCIPAL)
+# 4. EVENTOS DO BOT
 # ==========================================
 @client.event
 async def on_message(message):
@@ -104,19 +104,23 @@ async def on_message(message):
         for att in message.attachments:
             if att.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
                 try:
-                    img = Image.open(BytesIO(requests.get(att.url).content))
+                    # Baixa o conteúdo da imagem da internet
+                    img_data = requests.get(att.url).content
+                    img = Image.open(BytesIO(img_data))
                     hash_atual = imagehash.phash(img)
                     
                     for h_str in IMAGENS_BLOQUEADAS:
                         if (hash_atual - imagehash.hex_to_hash(h_str)) < 10:
-                            url_img = att.url
+                            # 1. Apaga a mensagem original
                             await message.delete()
                             
-                            # Bane e avisa no log
+                            # 2. Dá o Ban
                             await message.author.ban(reason="Hackeado")
-                            await enviar_log_ban(message.author, url_img)
+                            
+                            # 3. Envia o log passando os dados da imagem já baixados
+                            await enviar_log_ban(message.author, img_data)
                             return
                 except Exception as e:
-                    print(f"Erro imagem: {e}")
+                    print(f"Erro processando imagem: {e}")
 
 client.run(TOKEN)
