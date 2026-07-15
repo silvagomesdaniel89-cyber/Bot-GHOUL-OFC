@@ -1,16 +1,16 @@
-import re
-import unicodedata
 import os
 import discord
 import requests
 import imagehash
 import asyncio
+import re
+import unicodedata  # <--- Isso resolve o erro atual
+from discord.ext import commands
 from PIL import Image
 from io import BytesIO
 from flask import Flask
 from datetime import timedelta
 from threading import Thread
-from discord.ext import commands
 
 # ==================== CONFIGURAÇÃO MULTISSERVIDORES ====================
 CONFIG_SERVIDORES = {
