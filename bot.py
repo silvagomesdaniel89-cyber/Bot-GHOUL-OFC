@@ -1,3 +1,5 @@
+import re
+import unicodedata
 import os
 import discord
 import requests
