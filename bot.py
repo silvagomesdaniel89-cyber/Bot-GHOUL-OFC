@@ -446,4 +446,8 @@ async def unban(ctx, user_id: int):
     await ctx.guild.unban(user)
     await ctx.send(f"🕊️ {user.name} foi desbanido!", delete_after=5)
 
-client.run(TOKEN)
+import os
+# ... outros imports
+
+TOKEN = os.getenv('DISCORD_TOKEN') # Ou o nome que você deu à variável no painel do Render
+bot.run(TOKEN)
