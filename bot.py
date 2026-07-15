@@ -9,320 +9,440 @@ from flask import Flask
 from datetime import timedelta
 from threading import Thread
 
-# ==========================================
-# 1. SERVIDOR WEB (Para manter online no Render)
-# ==========================================
-app = Flask('')
-@app.route('/')
-def home(): return "Bot GHOUL SECURITY Online!"
-def run(): app.run(host='0.0.0.0', port=8080)
-Thread(target=run, daemon=True).start()
-
-# ==========================================
-# 2. CONFIGURAÇÕES MULTI-SERVIDORES e IDs
-# ==========================================
-TOKEN = os.environ.get('DISCORD_TOKEN')
-
-# SUBSTITUA OS ZEROS PELOS IDS REAIS DO SEU DISCORD
+# ==================== CONFIGURAÇÃO MULTISSERVIDORES ====================
 CONFIG_SERVIDORES = {
-    # 1. SERVIDOR GHOUL (Apenas Segurança)
-    1143627184842493992: { 
-        "LOGS_PUNICOES": 1272293056812683345, 
-        "BANS": 1468415943251202252
+    1143627184842493992: {  # ID do Servidor: GHOUL
+        "nome": "GHOUL",
+        "canal_logs": 1272293056812683345,       # Canal de logs gerais (mensagens, voz, perfil)
+        "canal_punicoes": 1468415943251202252,   # Canal para avisos de bans/mutes
+        "categoria_tickets": 1527037033057353728,
+        "cargo_staff": 1274081192450195671,
     },
-    
-    # 2. SERVIDOR BLOX KINGS (Segurança + Auditoria Completa)
-    1169685424738947172: { 
-        "LOGS_PUNICOES": 1526255782222626907, 
-        "BANS": 1526255782222626907,           
-        "LOGS_GERAIS": 1526271422253629681     
+    1169685424738947172: {  # ID do Servidor: BLOX KINGS
+        "nome": "BLOX KINGS",
+        "canal_logs": 1526271422253629681,
+        "canal_punicoes": 1526255782222626907,
+        "categoria_tickets": 1170495547426217995,
+        "cargo_staff": 1317249055058825236,
+    },
+    1331323352840933497: {  # ID do Servidor: NIGHTWARE STORE
+        "nome": "NIGHTWARE STORE",
+        "canal_logs": 1527037894743687168,
+        "canal_punicoes": 1527038039111635114,
+        "categoria_tickets": 1331327159448375356,
+        "cargo_staff": 1333982207701684294,
     }
 }
 
-# 📍 CONFIGURAÇÃO DOS CANAIS DE TICKET (BLOX KINGS)
-IDCATEGORIA_TICKETS = 1170495547426217995  
-ID_CANAL_COMPRAR = 1169984890046001232     
-
-# 📍 CONFIGURAÇÃO DOS CARGOS PARA PINGAR EM CADA TICKET (Substitua pelos IDs reais)
-CARGOS_TICKETS = {
-    "Robux": 1317249055058825236,
-    "Gamepass": 1317249055058825236,
-    "Frutas Perm": 1317249055058825236,
-    "Frutas Físicas": 1317249055058825236,
-    "Contas GHM/Fruta": 1317249055058825236,
-    "Suporte / Dúvidas": 1317249055058825236
+# ==================== IMAGENS DE BANNER DOS TICKET ====================
+# Substitua pelas URLs reais das suas artes/banners.
+IMAGENS_TICKETS = {
+    "GHOUL": "https://cdn.discordapp.com/attachments/1444429504838631586/1454170002746769530/Banner_ticket_20250205_120340_0000.png?ex=6a591a59&is=6a57c8d9&hm=db7d7925f0954c26860c2b0ecd11f974ee0c5df4b650fbfbfab69aa54f06928e",
+    "COD": "https://cdn.discordapp.com/attachments/1183819407013707947/1469731813709578417/GHOUL_20260207_132912_0000.png?ex=6a5906ea&is=6a57b56a&hm=9265b6a1d49b9a1ed3427911f5b531e398c73c238052889171a16ec80accf525",
+    "BLOX_KINGS": "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png?ex=6a591698&is=6a57c518&hm=21e4a41c202aca8c264ed1d997e15cb3916c4c5a55cb54f3340e27b1bd75c8ec",
+    "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif?ex=6a58963a&is=6a5744ba&hm=296484ff3b62c71a50985ba5c23340456b491c271bc122bb17437885718c965f"
 }
+# ======================================================================
 
-# LINK DO BANNER DA SUA LOJA
-LINK_BANNER_LOJA = "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png?ex=6a567398&is=6a552218&hm=48c72ace1d64adf01f929e392ddd9bd64dcd74e31ca0a18d75ae98a8c6f28550.jpg"
-
-IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6', '91ac6db293ab09a6']
-
-PALAVRAS_PROIBIDAS = [
-    "arrombado", "vagabunda", "caralho", "bosta", "merda", "fdp", "fudido", "otario", "idiota", 
-    "buceta", "cuzao", "viado", "corno", "puta", "toma no cu", "tmnc", "toma no seu cu", 
-    "vai tomar no cu", "se foder", "sfoder", "se fode", "vai se foder", "vai se ferrar", 
-    "vsf", "pqp", "fds"
+TERMOS_PROIBIDOS = [
+    "checkmybio", "checkmyprofile", "lookmybio", "lookatmybio", "checkbio",
+    "olharabiografia", "olheminhabio", "olhaabiografia", "vejaabiografia",
+    "miramibio", "miraatubio", "freenitro", "nitrogratis", "onlyfansfree",
+    "fdp", "filhodaputa", "caralho", "bosta", "escroto", "merda", "arrombado",
+    "viado", "corno", "desgracado", "vagabundo", "porra", "fuck", "bitch",
+    "asshole", "bastard", "dick", "pussy", "shit", "cunt", "motherfucker",
+    "mierda", "maricon", "cabron", "gilipollas", "hijodeputa", "pendejo"
 ]
 
-FRASES_SCAM = [
-    "check my bio", "shes on cam", "she's squirting", "squirt", "look my bio", 
-    "crypto casino", "free usdt", "withdrawal success", "check my bi0"
-]
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix="!", intents=intents, help_command=None)
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-intents.presences = True 
-client = discord.Client(intents=intents)
+def obter_config(guild_id):
+    return CONFIG_SERVIDORES.get(guild_id)
 
-# ==========================================
-# 3. CLASSES E VIEWS DO SISTEMA DE TICKETS
-# ==========================================
-class TicketDropdown(discord.ui.Select):
+def normalizar_texto(texto):
+    texto = texto.lower()
+    texto = ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    substituicoes = {'1': 'i', '3': 'e', '4': 'a', '0': 'o', '5': 's', '7': 't', '$': 's', '@': 'a'}
+    for orig, sub in substituicoes.items():
+        texto = texto.replace(orig, sub)
+    return re.sub(r'[^a-z0-9\s]', '', texto)
+
+# ==================== SISTEMA DE ATENDIMENTO (TICKETS) ====================
+
+class DropdownGhoul(discord.ui.Select):
     def __init__(self):
-        options = [
-            discord.SelectOption(label="Robux", description="Comprar Robux ou ver tabelas", emoji="💰"),
-            discord.SelectOption(label="Gamepass", description="Comprar Gamepasses do Blox Fruits", emoji="📦"),
-            discord.SelectOption(label="Frutas Perm", description="Comprar Frutas Permanentes", emoji="🍊"),
-            discord.SelectOption(label="Frutas Físicas", description="Comprar Frutas Físicas (Inventário)", emoji="🍎"),
-            discord.SelectOption(label="Contas GHM/Fruta", description="Geral, Fruta Inv ou Contas Random", emoji="💸"),
-            discord.SelectOption(label="Suporte / Dúvidas", description="Falar com a Staff do servidor", emoji="❓"),
+        opcoes = [
+            discord.SelectOption(label="Denúncias", value="denuncias", description="Denúncias, ajuda técnica e revisão.", emoji="🚨"),
+            discord.SelectOption(label="Suporte", value="suporte", description="Recorra a uma punição (warn/mute).", emoji="🛠️"),
+            discord.SelectOption(label="Dúvidas", value="duvidas", description="Tire dúvidas sobre a comunidade ou regras.", emoji="❓"),
+            discord.SelectOption(label="Exposed", value="exposed", description="Falar sobre membro expondo outro.", emoji="⚠️")
         ]
-        super().__init__(placeholder="Selecione uma opção para abrir um ticket...", min_values=1, max_values=1, options=options, custom_id="ticket_select")
+        super().__init__(placeholder="Selecione o setor do suporte...", min_values=1, max_values=1, options=opcoes, custom_id="sel_ghoul")
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        guild = interaction.guild
-        membro = interaction.user
-        escolha = self.values[0]
-        
-        categoria = guild.get_channel(IDCATEGORIA_TICKETS)
-        if not categoria:
-            await interaction.followup.send("❌ Erro: Categoria de tickets não encontrada. Avise um Administrador.", ephemeral=True)
-            return
+        await criar_canal_ticket(interaction, self.values[0], "GHOUL")
 
-        permissoes = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            membro: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-
-        nome_canal = f"🎫-{escolha.lower().replace(' ', '-')}-{membro.name}"
-        ticket_channel = await guild.create_text_channel(name=nome_canal, category=categoria, overwrites=permissoes)
-
-        id_cargo = CARGOS_TICKETS.get(escolha, 0)
-        mencao_cargo = f"<@&{id_cargo}>" if id_cargo != 0 else "@everyone"
-
-        embed_ticket = discord.Embed(
-            title=f"🏪 BLOX KINGS - Ticket de {escolha}",
-            description=f"Olá {membro.mention}, obrigado por entrar em contato!\nA equipe responsável {mencao_cargo} já foi notificada.\n\n"
-                        f"**Assunto selecionado:** `{escolha}`\n\n"
-                        "Se veio fazer uma compra, envie o seu pedido para agilizar!",
-            color=discord.Color.green()
-        )
-        if membro.display_avatar: embed_ticket.set_thumbnail(url=membro.display_avatar.url)
-        embed_ticket.set_footer(text="Para fechar este ticket, clique no botão abaixo.")
-
-        view_fechar = discord.ui.View(timeout=None)
-        botao_fechar = discord.ui.Button(label="Fechar Ticket", style=discord.ButtonStyle.red, emoji="🔒", custom_id="fechar_ticket")
-        
-        async def fechar_callback(inter_fechar):
-            await inter_fechar.response.send_message("Este ticket será deletado em 5 segundos...", ephemeral=False)
-            await asyncio.sleep(5)
-            await inter_fechar.channel.delete()
-
-        botao_fechar.callback = fechar_callback
-        view_fechar.add_item(botao_fechar)
-
-        await ticket_channel.send(content=f"{membro.mention} | {mencao_cargo}", embed=embed_ticket, view=view_fechar)
-        await interaction.followup.send(f"✅ Seu ticket de **{escolha}** foi aberto em: {ticket_channel.mention}", ephemeral=True)
-
-class TicketView(discord.ui.View):
+class DropdownKings(discord.ui.Select):
     def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(TicketDropdown())
+        opcoes = [
+            discord.SelectOption(label="Comprar Robux", value="robux", description="Adquira Robux com segurança.", emoji="💰"),
+            discord.SelectOption(label="Frutas Permanentes", value="frutas", description="Frutas permanentes e físicas.", emoji="🍎"),
+            discord.SelectOption(label="Contas / Gamepasses", value="contas", description="Contas e passes de jogo.", emoji="📦"),
+            discord.SelectOption(label="Suporte Geral", value="suporte", description="Fale com nossa equipe.", emoji="🛠️"),
+            discord.SelectOption(label="Outros", value="outros", description="Outros assuntos ou dúvidas.", emoji="📌")
+        ]
+        super().__init__(placeholder="Selecione o produto ou suporte...", min_values=1, max_values=1, options=opcoes, custom_id="sel_kings")
 
-# ==========================================
-# 4. FUNÇÕES AUXILIARES DE LOGS (DESIGN PREMIUM)
-# ==========================================
-async def enviar_log_delecao(message, motivo):
-    guild_id = message.guild.id
-    if guild_id in CONFIG_SERVIDORES:
-        canal_id = CONFIG_SERVIDORES[guild_id].get("LOGS_GERAIS") if "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id] else CONFIG_SERVIDORES[guild_id]["LOGS_PUNICOES"]
-        canal = client.get_channel(canal_id)
-        if canal:
-            embed = discord.Embed(title="🛡️ GHOUL SECURITY - Filtro Automático", color=0xdd2e44, timestamp=message.created_at)
-            embed.description = (
-                f"👤 **Usuário:** {message.author.mention} (`{message.author.id}`)\n"
-                f"💬 **Canal:** {message.channel.mention}\n"
-                f"🚨 **Ocorrência:** `{motivo}`\n\n"
-                f"**Mensagem Deletada:**\n"
-                f"```css\n{message.content or 'Sem conteúdo de texto'}\n```"
-            )
-            if message.author.display_avatar: embed.set_thumbnail(url=message.author.display_avatar.url)
-            embed.set_footer(text="Segurança Ativa Blox Kings")
-            await canal.send(embed=embed)
+    async def callback(self, interaction: discord.Interaction):
+        await criar_canal_ticket(interaction, self.values[0], "BLOX KINGS")
 
-async def enviar_log_ban(member, image_bytes, guild_id, motivo="Hackeado"):
-    if guild_id in CONFIG_SERVIDORES:
-        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["BANS"])
-        if canal:
-            texto_log = f"**Id/Nick:** {member.id}/{member.name}\n**Staff:** @GHOUL\n**Ação:** ban\n**Motivo:** {motivo}\n**Prova:**"
-            embed = discord.Embed(color=0x2f3136)
-            if image_bytes:
-                arquivo = discord.File(fp=BytesIO(image_bytes), filename="prova.png")
-                embed.set_image(url="attachment://prova.png")
-                await canal.send(content=texto_log, file=arquivo, embed=embed)
-            else:
-                await canal.send(content=f"{texto_log} *Verifique o histórico ou logs gerais*")
+class DropdownNightware(discord.ui.Select):
+    def __init__(self):
+        opcoes = [
+            discord.SelectOption(label="Comprar Produtos", value="compras", description="Adquira nossos produtos.", emoji="🛒"),
+            discord.SelectOption(label="Financeiro", value="financeiro", description="Dúvidas sobre pagamentos.", emoji="💳"),
+            discord.SelectOption(label="Suporte Geral", value="suporte", description="Fale com o suporte.", emoji="🛠️"),
+            discord.SelectOption(label="Outros", value="outros", description="Outros assuntos.", emoji="📌")
+        ]
+        super().__init__(placeholder="Selecione a categoria de atendimento...", min_values=1, max_values=1, options=opcoes, custom_id="sel_nightware")
 
-# ==========================================
-# 5. EVENTOS DO BOT (AUDITORIA LIMPA)
-# ==========================================
-@client.event
+    async def callback(self, interaction: discord.Interaction):
+        await criar_canal_ticket(interaction, self.values[0], "NIGHTWARE STORE")
+
+class ViewGhoul(discord.ui.View):
+    def __init__(self): super().__init__(timeout=None); self.add_item(DropdownGhoul())
+
+class ViewKings(discord.ui.View):
+    def __init__(self): super().__init__(timeout=None); self.add_item(DropdownKings())
+
+class ViewNightware(discord.ui.View):
+    def __init__(self): super().__init__(timeout=None); self.add_item(DropdownNightware())
+
+class ViewFechar(discord.ui.View):
+    def __init__(self): super().__init__(timeout=None)
+    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="btn_fechar")
+    async def fechar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🔒 Fechando canal em 5 segundos...", ephemeral=True)
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
+
+async def criar_canal_ticket(interaction: discord.Interaction, setor: str, sv_nome: str):
+    config = obter_config(interaction.guild.id)
+    if not config: return
+    
+    categoria = discord.utils.get(interaction.guild.categories, id=config["categoria_tickets"])
+    cargo_staff = interaction.guild.get_role(config["cargo_staff"])
+    
+    overwrites = {
+        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True),
+        interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
+    }
+    if cargo_staff:
+        overwrites[cargo_staff] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+
+    canal = await interaction.guild.create_text_channel(
+        name=f"ticket-{interaction.user.name}-{setor}",
+        category=categoria,
+        overwrites=overwrites
+    )
+    
+    embed = discord.Embed(
+        title=f"👑 Atendimento | {sv_nome}",
+        description=f"Olá {interaction.user.mention}, seu canal de atendimento para **{setor.upper()}** foi criado com sucesso!\nDescreva seu problema ou dúvida para que a Staff possa ajudar.",
+        color=discord.Color.blue()
+    )
+    await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewFechar())
+    await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
+
+# ==================== EVENTOS DE INICIALIZAÇÃO ====================
+
+@bot.event
 async def on_ready():
-    print(f"Bot logado com sucesso como {client.user}")
-    client.add_view(TicketView())
+    bot.add_view(ViewGhoul())
+    bot.add_view(ViewKings())
+    bot.add_view(ViewNightware())
+    bot.add_view(ViewFechar())
+    print(f"✅ Bot {bot.user.name} online e pronto nos 3 servidores com sistema de logs integrado!")
 
-# 5.1. MENSAGEM DELETADA POR USUÁRIOS
-@client.event
-async def on_message_delete(message):
-    if message.author.bot or not message.guild: return
-    conteudo_lower = message.content.lower()
-    if any(p in conteudo_lower for p in PALAVRAS_PROIBIDAS + FRASES_SCAM) or "discord.gg" in conteudo_lower or "discord.com/invite" in conteudo_lower: return
-    
-    guild_id = message.guild.id
-    if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
-        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
-        if canal:
-            embed = discord.Embed(title="🗑️ Mensagem Apagada", color=0xf47fff)
-            embed.description = (
-                f"👤 **Autor:** {message.author.mention} (`{message.author.id}`)\n"
-                f"💬 **Canal:** {message.channel.mention}\n\n"
-                f"**Conteúdo Original:**\n"
-                f"```ini\n[{message.content or 'Sem texto / Imagem'}]\n```"
-            )
-            embed.set_footer(text="Logs Gerais Blox Kings")
-            await canal.send(embed=embed)
+# ==================== FILTRO ANTI-LINK E ANTI-FDP ====================
 
-# 5.2. MENSAGEM EDITADA
-@client.event
-async def on_message_edit(before, after):
-    if before.author.bot or not before.guild or before.content == after.content: return
-    guild_id = before.guild.id
-    if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
-        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
-        if canal:
-            embed = discord.Embed(title="✏️ Mensagem Editada", color=0x3b82f6)
-            embed.description = (
-                f"👤 **Autor:** {before.author.mention}\n"
-                f"💬 **Canal:** {before.channel.mention}\n\n"
-                f"**Antes:**\n```diff\n- {before.content or 'Vazio'}\n```\n"
-                f"**Depois:**\n```diff\n+ {after.content or 'Vazio'}\n```"
-            )
-            embed.set_footer(text="Logs Gerais Blox Kings")
-            await canal.send(embed=embed)
-
-# 5.3. ALTERAÇÃO DE APELIDO
-@client.event
-async def on_member_update(before, after):
-    guild_id = before.guild.id
-    if guild_id in CONFIG_SERVIDORES and "LOGS_GERAIS" in CONFIG_SERVIDORES[guild_id]:
-        canal = client.get_channel(CONFIG_SERVIDORES[guild_id]["LOGS_GERAIS"])
-        if canal and before.nick != after.nick:
-            embed = discord.Embed(title="👤 Apelido Alterado", color=0x9b59b6)
-            embed.description = (
-                f"👤 **Membro:** {before.mention} (`{before.id}`)\n\n"
-                f"❌ **Antigo:** `{before.nick or before.name}`\n"
-                f"✅ **Novo:** `{after.nick or after.name}`"
-            )
-            embed.set_footer(text="Logs Gerais Blox Kings")
-            await canal.send(embed=embed)
-
-# 5.4. TELEMETRIA E FILTROS DE SEGURANÇA
-@client.event
+@bot.event
 async def on_message(message):
-    if not message.author.bot and message.guild:
-        print(f"[DIAGNÓSTICO] Mensagem de {message.author.name} no canal {message.channel.name} (ID: {message.channel.id}): '{message.content}'")
+    if message.author.bot or not message.guild:
+        return
 
-    if message.author == client.user or not message.guild: return
-    conteudo = message.content.strip().lower()
+    config = obter_config(message.guild.id)
+    if not config:
+        await bot.process_commands(message)
+        return
+
+    texto_norm = normalizar_texto(message.content)
     
-    # COMANDO PARA SETAR O PAINEL DE TICKETS (Apenas Admins)
-    if conteudo == "!setup_ticket":
-        print(f"[DIAGNÓSTICO] Comando !setup_ticket detectado! Verificando permissões...")
-        
-        if not message.author.guild_permissions.administrator:
-            print(f"[DIAGNÓSTICO] {message.author.name} não possui cargo administrativo.")
+    # Anti-link (Mute de 1 Hora)
+    if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):
+        if not message.author.guild_permissions.manage_messages:
+            await message.delete()
+            try:
+                await message.author.timeout(datetime.timedelta(hours=1), reason="Divulgação de link de servidor.")
+            except:
+                pass
+            
+            canal_punicoes = bot.get_channel(config["canal_punicoes"])
+            if canal_punicoes:
+                embed = discord.Embed(
+                    title="🚫 Punição Automática: Mute (1 Hora)",
+                    description=f"O usuário {message.author.mention} foi mutado automaticamente por enviar links de outros servidores.",
+                    color=discord.Color.red(),
+                    timestamp=discord.utils.utcnow()
+                )
+                await canal_punicoes.send(embed=embed)
             return
 
-        try:
-            print(f"[DIAGNÓSTICO] Comparando Canal Atual ({message.channel.id}) com Canal Configurado ({ID_CANAL_COMPRAR})")
-            
-            if int(message.channel.id) != int(ID_CANAL_COMPRAR):
-                print(f"[DIAGNÓSTICO] Comando abortado: ID de canal diferente.")
-                await message.channel.send(f"❌ Esse comando só pode ser usado no canal <#{ID_CANAL_COMPRAR}>!", delete_after=5)
+    # Anti-Fake / Palavras Proibidas
+    for termo in TERMOS_PROIBIDOS:
+        if termo in texto_norm:
+            if not message.author.guild_permissions.manage_messages:
                 await message.delete()
                 return
 
-            await message.delete()
-            embed_painel = discord.Embed(
-                title="🎫 CENTRAL DE ATENDIMENTO - BLOX KINGS",
-                description="Precisa de ajuda, deseja comprar Robux, Frutas Permanentes ou Contas?\n"
-                            "Selecione a categoria correta no menu abaixo para abrir o seu ticket.\n\n"
-                            "⚠️ **Lembre-se:** Não abra tickets sem necessidade para evitar punições.",
-                color=0x2f3136
-            )
-            embed_painel.set_image(url=LINK_BANNER_LOJA)
-            await message.channel.send(embed=embed_painel, view=TicketView())
-            print("✅ [SUCESSO] Painel de tickets enviado com sucesso!")
-            return
-        except Exception as e:
-            print(f"❌ [ERRO CRÍTICO] Falha ao enviar painel de ticket: {e}")
-            return
+    await bot.process_commands(message)
 
-    # --- FILTRO 1: FRASE DE BOT HACKEADO (BAN IMEDIATO) ---
-    if any(frase in conteudo for frase in FRASES_SCAM):
-        try:
-            await message.delete()
-            await message.author.ban(reason="Bot de Spam / Conta Hackeada")
-            await enviar_log_ban(message.author, None, message.guild.id, motivo="Postou Spam/Link Malicioso (Conta Hackeada)")
-        except Exception as e: print(f"Erro no filtro de Scam: {e}")
-        return
+# ==================== SISTEMA DE LOGS COMPLETOS ====================
 
-    # --- FILTRO 2: CONVITES DO DISCORD (MUTE DE 1 HORA) ---
-    if "discord.gg/" in conteudo or "discord.com/invite/" in conteudo:
-        try:
-            await message.delete()
-            duracao = timedelta(minutes=60)
-            await message.author.timeout(duracao, reason="Envio de link de outro servidor")
-            await enviar_log_ban(message, "Link de Servidor Detectado (Usuário Mutado por 1h)")
-        except Exception as e: print(f"Erro ao aplicar mute por link: {e}")
-        return
+@bot.event
+async def on_message_delete(message):
+    if message.author.bot or not message.guild: return
+    config = obter_config(message.guild.id)
+    if not config: return
+    canal_logs = bot.get_channel(config["canal_logs"])
+    if not canal_logs: return
 
-    # --- FILTRO 3: PALAVRÕES (APENAS DELETA A MENSAGEM, SEM APLICAR MUTE) ---
-    if any(palavra in conteudo for palavra in PALAVRAS_PROIBIDAS):
-        try:
-            await message.delete()
-            await enviar_log_delecao(message, "Palavrão/Xingamento detectado")
-        except Exception as e: print(f"Erro ao deletar xingamento: {e}")
-        return
-
-    # --- FILTRO 4: IMAGENS PROIBIDAS ---
+    embed = discord.Embed(
+        title="🗑️ Mensagem Apagada",
+        description=f"Mensagem enviada por {message.author.mention} foi excluída em {message.channel.mention}.",
+        color=discord.Color.red(),
+        timestamp=discord.utils.utcnow()
+    )
+    embed.set_author(name=message.author.name, icon_url=message.author.display_avatar.url)
+    
+    if message.content:
+        embed.add_field(name="Texto Original", value=message.content[:1024], inline=False)
+    
     if message.attachments:
-        for att in message.attachments:
-            if att.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                try:
-                    img_data = requests.get(att.url).content
-                    img = Image.open(BytesIO(img_data))
-                    hash_atual = imagehash.phash(img)
-                    for h_str in IMAGENS_BLOQUEADAS:
-                        if (hash_atual - imagehash.hex_to_hash(h_str)) < 10:
-                            await message.delete()
-                            await message.author.ban(reason="Hackeado")
-                            await enviar_log_ban(message.author, img_data, message.guild.id)
-                            return
-                except Exception as e: print(f"Erro processando imagem: {e}")
+        for anexo in message.attachments:
+            if any(anexo.filename.lower().endswith(ext) for ext in ["png", "jpg", "jpeg", "gif", "webp"]):
+                embed.set_image(url=anexo.url)
+                embed.add_field(name="Imagem Anexada", value=f"[Clique para ver]({anexo.url})", inline=False)
+                break
+
+    await canal_logs.send(embed=embed)
+
+@bot.event
+async def on_message_edit(before, after):
+    if before.author.bot or not before.guild or before.content == after.content: return
+    config = obter_config(before.guild.id)
+    if not config: return
+    canal_logs = bot.get_channel(config["canal_logs"])
+    if not canal_logs: return
+
+    embed = discord.Embed(
+        title="✏️ Mensagem Editada",
+        description=f"Mensagem de {before.author.mention} modificada em {before.channel.mention}.",
+        color=discord.Color.orange(),
+        timestamp=discord.utils.utcnow()
+    )
+    embed.set_author(name=before.author.name, icon_url=before.author.display_avatar.url)
+    embed.add_field(name="Antes", value=before.content[:1024] or "*Sem conteúdo*", inline=False)
+    embed.add_field(name="Depois", value=after.content[:1024] or "*Sem conteúdo*", inline=False)
+    await canal_logs.send(embed=embed)
+
+@bot.event
+async def on_member_update(before, after):
+    config = obter_config(before.guild.id)
+    if not config: return
+    canal_logs = bot.get_channel(config["canal_logs"])
+    if not canal_logs: return
+
+    # Log de Apelido (Nickname)
+    if before.nick != after.nick:
+        embed = discord.Embed(
+            title="📝 Apelido Alterado",
+            description=f"O membro {after.mention} mudou seu apelido no servidor.",
+            color=discord.Color.teal(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.set_author(name=after.name, icon_url=after.display_avatar.url)
+        embed.add_field(name="Apelido Anterior", value=before.nick or "*Sem apelido*", inline=True)
+        embed.add_field(name="Apelido Novo", value=after.nick or "*Sem apelido*", inline=True)
+        await canal_logs.send(embed=embed)
+
+@bot.event
+async def on_user_update(before, after):
+    # Logs globais de conta (Avatar ou Nome de Usuário)
+    for guild in bot.guilds:
+        if guild.get_member(after.id):
+            config = obter_config(guild.id)
+            if not config: continue
+            canal_logs = bot.get_channel(config["canal_logs"])
+            if not canal_logs: continue
+
+            # Nome alterado
+            if before.name != after.name:
+                embed = discord.Embed(title="👤 Nome de Usuário Alterado", color=discord.Color.blue(), timestamp=discord.utils.utcnow())
+                embed.add_field(name="Antes", value=before.name, inline=True)
+                embed.add_field(name="Depois", value=after.name, inline=True)
+                await canal_logs.send(embed=embed)
+
+            # Avatar alterado
+            if before.avatar != after.avatar:
+                embed = discord.Embed(
+                    title="🖼️ Foto de Perfil Alterada",
+                    description=f"{after.mention} atualizou seu avatar global.",
+                    color=discord.Color.purple(),
+                    timestamp=discord.utils.utcnow()
+                )
+                embed.set_thumbnail(url=before.display_avatar.url)
+                embed.set_image(url=after.display_avatar.url)
+                await canal_logs.send(embed=embed)
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    config = obter_config(member.guild.id)
+    if not config: return
+    canal_logs = bot.get_channel(config["canal_logs"])
+    if not canal_logs: return
+
+    embed = discord.Embed(timestamp=discord.utils.utcnow())
+    embed.set_author(name=f"{member.name} ({member.id})", icon_url=member.display_avatar.url)
+
+    # Entrou em call/palco
+    if not before.channel and after.channel:
+        embed.title = "🔊 Conectou à Call"
+        embed.description = f"{member.mention} entrou no canal de voz/palco {after.channel.mention}."
+        embed.color = discord.Color.green()
+        await canal_logs.send(embed=embed)
+    # Saiu da call/palco
+    elif before.channel and not after.channel:
+        embed.title = "🔇 Saiu da Call"
+        embed.description = f"{member.mention} desconectou-se do canal {before.channel.mention}."
+        embed.color = discord.Color.red()
+        await canal_logs.send(embed=embed)
+    # Trocou de call
+    elif before.channel and after.channel and before.channel != after.channel:
+        embed.title = "🔄 Trocou de Call"
+        embed.description = f"{member.mention} mudou de {before.channel.mention} para {after.channel.mention}."
+        embed.color = discord.Color.blue()
+        await canal_logs.send(embed=embed)
+
+@bot.event
+async def on_member_ban(guild, user):
+    config = obter_config(guild.id)
+    if not config: return
+    canal_punicoes = bot.get_channel(config["canal_punicoes"])
+    if canal_punicoes:
+        embed = discord.Embed(
+            title="🔨 Membro Banido",
+            description=f"O usuário **{user.name}** (`{user.id}`) foi banido do servidor.",
+            color=discord.Color.dark_red(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.set_thumbnail(url=user.display_avatar.url)
+        await canal_punicoes.send(embed=embed)
+
+@bot.event
+async def on_member_unban(guild, user):
+    config = obter_config(guild.id)
+    if not config: return
+    canal_logs = bot.get_channel(config["canal_logs"])
+    if canal_logs:
+        embed = discord.Embed(
+            title="🕊️ Membro Desbanido",
+            description=f"O banimento de **{user.name}** (`{user.id}`) foi revogado.",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow()
+        )
+        await canal_logs.send(embed=embed)
+
+# ==================== COMANDOS EXCLUSIVOS DE PAINEL ====================
+
+@bot.command(name="ticket_ghoul")
+@commands.has_permissions(administrator=True)
+async def ticket_ghoul(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="🛡️ CENTRAL DE ATENDIMENTO - GHOUL",
+        description="𝐃𝐞𝐧𝐮́𝐧𝐜𝐢𝐚𝐬:\n↳ 𝐃𝐞𝐧𝐮́𝐧𝐜𝐢𝐚𝐬, 𝐚𝐣𝐮𝐝𝐚 𝐭𝐞́𝐜𝐧𝐢𝐜𝐚 𝐞 𝐫𝐞𝐯𝐢𝐬𝐚̃𝐨 𝐝𝐞 𝐩𝐮𝐧𝐢𝐜̧𝐨̃𝐞𝐬.\n\n"
+                    "𝐒𝐮𝐩𝐨𝐫𝐭𝐞:\n↳ 𝐑𝐞𝐜𝐨𝐫𝐫𝐚 𝐚 𝐮𝐦𝐚 𝐩𝐮𝐧𝐢𝐜̧𝐚̃𝐨 (𝐰𝐚𝐫𝐧/𝐦𝐮𝐭𝐞).\n\n"
+                    "𝐃𝐮́𝐯𝐢𝐝𝐚𝐬:\n↳ 𝐓𝐢𝐫𝐞 𝐝𝐮́𝐯𝐢𝐝𝐚𝐬 𝐬𝐨𝐛𝐫𝐞 𝐚 𝐜𝐨𝐦𝐮𝐧𝐢𝐝𝐚𝐝𝐞 𝐨𝐮 𝐫𝐞𝐠𝐫𝐚𝐬 𝐝𝐨 𝐬𝐞𝐫𝐯𝐢𝐝𝐨𝐫.\n\n"
+                    "𝐄𝐱𝐩𝐨𝐬𝐞𝐝:\n↳ 𝐅𝐚𝐥𝐚𝐫 𝐬𝐨𝐛𝐫𝐞 𝐚𝐥𝐠𝐮𝐦 𝐦𝐞𝐦𝐛𝐫𝐨 𝐪𝐮𝐞 𝐞𝐬𝐭𝐚́ 𝐞𝐱𝐩𝐨𝐧𝐝𝐨 𝐨𝐮𝐭𝐫𝐨 𝐦𝐞𝐦𝐛𝐫𝐨.\n\n"
+                    "𝐋𝐞𝐦𝐛𝐫𝐞-𝐬𝐞: 𝐍𝐨𝐬𝐬𝐚 𝐞𝐪𝐮𝐢𝐩𝐞 𝐞𝐬𝐭𝐚́ 𝐩𝐫𝐨𝐧𝐭𝐚 𝐩𝐚𝐫𝐚 𝐢𝐧𝐯𝐞𝐬𝐭𝐢𝐠𝐚𝐫 𝐞 𝐫𝐞𝐬𝐨𝐥𝐯𝐞𝐫 𝐪𝐮𝐚𝐥𝐪𝐮𝐞𝐫 𝐬𝐢𝐭𝐮𝐚𝐜̧𝐚̃𝐨 𝐝𝐞 𝐟𝐨𝐫𝐦𝐚 𝐫𝐚́𝐩𝐢𝐝𝐚 𝐞 𝐣𝐮𝐬𝐭𝐚. 𝐒𝐮𝐚 𝐩𝐫𝐢𝐯𝐚𝐜𝐢𝐝𝐚𝐝𝐞 𝐬𝐞𝐫𝐚́ 𝐫𝐞𝐬𝐩𝐞𝐢𝐭𝐚𝐝𝐚 𝐝𝐮𝐫𝐚𝐧𝐭𝐞 𝐭𝐨𝐝𝐨 𝐨 𝐩𝐫𝐨𝐜𝐞𝐬𝐬𝐨!",
+        color=discord.Color.from_rgb(142, 68, 173)
+    )
+    if IMAGENS_TICKETS["GHOUL"]:
+        embed.set_image(url=IMAGENS_TICKETS["GHOUL"])
+    await ctx.send(embed=embed, view=ViewGhoul())
+
+@bot.command(name="ticket_cod")
+@commands.has_permissions(administrator=True)
+async def ticket_cod(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="⚓ Verificação de COD ⚓",
+        description="Quando chamar **Levi**, apareça com o print comprovando que não está de COD!\n\n"
+                    "Anexe sua imagem de comprovação no chat para validação da Staff.",
+        color=discord.Color.blue()
+    )
+    if IMAGENS_TICKETS["COD"]:
+        embed.set_image(url=IMAGENS_TICKETS["COD"])
+    await ctx.send(embed=embed)
+
+@bot.command(name="ticket_kings")
+@commands.has_permissions(administrator=True)
+async def ticket_kings(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="👑 CENTRAL DE ATENDIMENTO - BLOX KINGS 👑",
+        description="Precisa de ajuda, deseja comprar **Robux**, **Frutas Permanentes** ou **Contas**?\n\n"
+                    "Selecione a categoria correta no menu abaixo para abrir o seu ticket.\n"
+                    "Lembre-se: Não abra tickets sem necessidade para evitar punições.",
+        color=discord.Color.gold()
+    )
+    if IMAGENS_TICKETS["BLOX_KINGS"]:
+        embed.set_image(url=IMAGENS_TICKETS["BLOX_KINGS"])
+    await ctx.send(embed=embed, view=ViewKings())
+
+@bot.command(name="ticket_nightware")
+@commands.has_permissions(administrator=True)
+async def ticket_nightware(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="🛍️ CENTRAL DE ATENDIMENTO - NIGHTWARE STORE 👑",
+        description="Precisa de ajuda, deseja comprar nossos serviços ou produtos?\n\n"
+                    "Selecione a categoria correta no menu abaixo para abrir o seu ticket.\n"
+                    "Lembre-se: Não abra tickets sem necessidade para evitar punições.",
+        color=discord.Color.dark_purple()
+    )
+    if IMAGENS_TICKETS["NIGHTWARE"]:
+        embed.set_image(url=IMAGENS_TICKETS["NIGHTWARE"])
+    await ctx.send(embed=embed, view=ViewNightware())
+
+# ==================== COMANDOS DE MODERAÇÃO ====================
+
+@bot.command(name="ban")
+@commands.has_permissions(ban_members=True)
+async def ban(ctx, membro: discord.Member, *, motivo="Sem motivo especificado"):
+    await ctx.message.delete()
+    await membro.ban(reason=f"{ctx.author.name} | {motivo}")
+    await ctx.send(f"✅ {membro.name} foi banido com sucesso!", delete_after=5)
+
+@bot.command(name="unban")
+@commands.has_permissions(ban_members=True)
+async def unban(ctx, user_id: int):
+    await ctx.message.delete()
+    user = await bot.fetch_user(user_id)
+    await ctx.guild.unban(user)
+    await ctx.send(f"🕊️ {user.name} foi desbanido!", delete_after=5)
 
 client.run(TOKEN)
