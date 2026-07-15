@@ -8,6 +8,7 @@ from io import BytesIO
 from flask import Flask
 from datetime import timedelta
 from threading import Thread
+from discord.ext import commands
 
 # ==================== CONFIGURAÇÃO MULTISSERVIDORES ====================
 CONFIG_SERVIDORES = {
