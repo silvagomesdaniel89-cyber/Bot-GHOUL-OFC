@@ -7,6 +7,7 @@ import re
 import unicodedata
 import datetime
 from discord.ext import commands
+from discord import app_commands
 from PIL import Image
 from io import BytesIO
 from flask import Flask
@@ -15,7 +16,7 @@ from threading import Thread
 # ==================== SERVIDOR WEB PARA O RENDER ====================
 app = Flask(__name__)
 @app.route('/')
-def home(): return "Bot online, operando e portas vinculadas!"
+def home(): return "Bot online e operando!"
 def run_server(): 
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
@@ -23,43 +24,34 @@ Thread(target=run_server, daemon=True).start()
 
 # ==================== CONFIGURAÇÕES GERAIS ====================
 CONFIG_SERVIDORES = {
-    1143627184842493992: {"nome": "GHOUL", "canal_logs": 1272293056812683345, "canal_punicoes": 1468415943251202252, "categoria_tickets": 1527037033057353728, "cargo_staff": 1274081192450195671},
+    1143627184842493992: {"nome": "GHOUL SECURITY", "canal_logs": 1272293056812683345, "canal_punicoes": 1468415943251202252, "categoria_tickets": 1527037033057353728, "cargo_staff": 1274081192450195671},
     1169685424738947172: {"nome": "BLOX KINGS", "canal_logs": 1526271422253629681, "canal_punicoes": 1526255782222626907, "categoria_tickets": 1170495547426217995, "cargo_staff": 1317249055058825236},
     1331323352840933497: {"nome": "NIGHTWARE STORE", "canal_logs": 1527037894743687168, "canal_punicoes": 1527038039111635114, "categoria_tickets": 1331327159448375356, "cargo_staff": 1333982207701684294}
 }
 
 IMAGENS_TICKETS = {
     "GHOUL": "https://cdn.discordapp.com/attachments/1444429504838631586/1454170002746769530/Banner_ticket_20250205_120340_0000.png",
-    "COD": "https://cdn.discordapp.com/attachments/1183819407013707947/1469731813709578417/GHOUL_20260207_132912_0000.png",
     "BLOX_KINGS": "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png",
     "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif"
 }
 
-TERMOS_BAN = ["checkmybio", "checkmyprofile", "lookmybio", "lookatmybio", "checkbio", "olharabiografia", "olheminhabio", "olhaabiografia", "vejaabiografia", "miramibio", "miraatubio", "freenitro", "nitrogratis", "onlyfansfree"]
-
-PALAVROES = [
-    "fdp", "filhodaputa", "caralho", "krl", "bosta", "escroto", "merda", 
-    "arrombado", "viado", "corno", "desgracado", "vagabundo", "porra", 
-    "buceta", "cacete", "puta", "puto", "cuzao", "pica", "rola", 
-    "xoxota", "piranha", "vadia", "retardado", "foder", "fodase", 
-    "tnc", "tomarnocu", "vsf", "vtnc", "pqp", "fuck", "bitch", "asshole", 
-    "bastard", "dick", "pussy", "shit", "cunt", "motherfucker"
-]
-
+TERMOS_BAN = ["checkmybio", "checkmyprofile", "lookmybio", "lookatmybio", "checkbio", "olharabiografia", "olheminhabio", "freenitro", "nitrogratis", "onlyfansfree"]
+PALAVROES = ["fdp", "filhodaputa", "caralho", "krl", "bosta", "escroto", "merda", "arrombado", "viado", "corno", "desgracado", "vagabundo", "porra", "buceta", "cacete", "puta", "puto", "cuzao", "pica", "rola", "xoxota", "vadia", "foder", "fodase", "tnc", "tomarnocu", "vsf", "vtnc", "pqp"]
 IMAGENS_BLOQUEADAS = ['9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 'c48ff019712fe2c6', '91ac6db293ab09a6']
-
-# Memória para evitar mensagens duplicadas nos logs
-mensagens_ignoradas_log = set()
 
 # ==================== SETUP DO BOT ====================
 class MeuBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=discord.Intents.all(), help_command=None)
+        self.mensagens_ignoradas = set()
+        self.ultimos_banimentos = set() # Evita duplicar log de banimento
+
     async def setup_hook(self):
         self.add_view(ViewGhoul())
         self.add_view(ViewKings())
         self.add_view(ViewNightware())
         self.add_view(ViewFechar())
+        await self.tree.sync()
 
 bot = MeuBot()
 
@@ -72,85 +64,141 @@ def normalizar_texto(texto):
         texto = texto.replace(orig, sub)
     return re.sub(r'[^a-z0-9\s]', '', texto)
 
-# ==================== DESIGN ELEGANTE DE PUNIÇÕES ====================
+# ==================== SISTEMA DE PUNIÇÕES (LOGS) ====================
 async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     config = obter_config(guild.id)
-    if not config: return
-    canal = bot.get_channel(config["canal_punicoes"])
-    if not canal: return
+    if not config or not (canal := bot.get_channel(config["canal_punicoes"])): return
 
-    embed = discord.Embed(title=f"🚨 {acao.upper()}", color=0xFF0000)
-    embed.set_author(name=f"Segurança • {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
+    embed = discord.Embed(title=f"🔨 Punição Aplicada: {acao}", color=0xFF0000, timestamp=discord.utils.utcnow())
+    if user.display_avatar: embed.set_thumbnail(url=user.display_avatar.url)
     
-    if isinstance(user, (discord.Member, discord.User)) and user.avatar:
-        embed.set_thumbnail(url=user.avatar.url)
-
     embed.add_field(name="👤 Usuário", value=f"{user.mention}\n`{user.id}`", inline=True)
-    embed.add_field(name="🛡️ Responsável", value=f"{staff.mention if isinstance(staff, (discord.Member, discord.User)) else staff}", inline=True)
-    embed.add_field(name="📋 Motivo", value=f"```{motivo}```", inline=False)
+    embed.add_field(name="🛡️ Staff", value=f"{staff.mention}", inline=True)
+    embed.add_field(name="📄 Motivo Original", value=f"```{motivo}```", inline=False)
+    
+    # Se for um Banimento, adiciona a carta do GHOUL
+    if "Ban" in acao:
+        carta_ghoul = (
+            f"**GHOUL | Aviso de Banimento**\n\n"
+            f"Caro {user.mention},\n\n"
+            f"Foste banido do GHOUL por violar as nossas regras. Lamentamos profundamente que tenhas decidido ignorar as normas que estabelecemos para manter a segurança e o respeito mútuo dentro da nossa comunidade. O teu comportamento não foi tolerado e resultou nesta ação.\n\n"
+            f"É imperativo que todos os membros sigam as diretrizes estabelecidas para garantir um ambiente seguro e acolhedor para todos os utilizadores. A tua falta de conformidade comprometeu isso.\n\n"
+            f"Se tiveres dúvidas sobre o banimento ou quiseres discutir o assunto, podes contactar-nos. No entanto, a decisão de banir permanece final e não será revertida sem uma consideração significativa.\n\n"
+            f"Desejamos sinceramente que aprendas com esta experiência e que possas refletir sobre as tuas ações futuras em qualquer comunidade online que participes.\n\n"
+            f"*Atenciosamente,*\n"
+            f"**Equipa de Moderação do GHOUL**"
+        )
+        embed.description = carta_ghoul
 
     if prova_url:
         embed.set_image(url=prova_url)
-        embed.add_field(name="📸 Prova Anexada", value="*Ver imagem abaixo*", inline=False)
+        embed.add_field(name="📸 Prova Anexada", value="*Veja a imagem abaixo*", inline=False)
 
-    embed.set_footer(text=f"{config['nome']} Security • {datetime.datetime.now().strftime('%d/%m/%Y às %H:%M')}")
+    embed.set_footer(text=f"{config['nome']} • Segurança", icon_url=guild.icon.url if guild.icon else None)
     await canal.send(embed=embed)
 
-# ==================== AUDIT LOGS (PUNIÇÕES MANUAIS NO DISCORD) ====================
+async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=None):
+    # Evita logs duplicados no Audit Log
+    bot.ultimos_banimentos.add(membro.id)
+    
+    # Tenta enviar a carta na DM antes de banir
+    carta_dm = (
+        f"**GHOUL | Aviso de Banimento**\n\n"
+        f"Caro {membro.mention},\n\n"
+        f"Foste banido do GHOUL por violar as nossas regras. Lamentamos profundamente que tenhas decidido ignorar as normas que estabelecemos para manter a segurança e o respeito mútuo dentro da nossa comunidade. O teu comportamento não foi tolerado e resultou nesta ação.\n\n"
+        f"É imperativo que todos os membros sigam as diretrizes estabelecidas para garantir um ambiente seguro e acolhedor para todos os utilizadores. A tua falta de conformidade comprometeu isso.\n\n"
+        f"Se tiveres dúvidas sobre o banimento ou quiseres discutir o assunto, podes contactar-nos. No entanto, a decisão de banir permanece final e não será revertida sem uma consideração significativa.\n\n"
+        f"Desejamos sinceramente que aprendas com esta experiência e que possas refletir sobre as tuas ações futuras em qualquer comunidade online que participes.\n\n"
+        f"*Atenciosamente,*\n"
+        f"**Equipa de Moderação do GHOUL**"
+    )
+    try:
+        await membro.send(carta_dm)
+    except: pass # Se a DM estiver fechada, apenas ignora e bane
+
+    # Aplica o Ban e Loga
+    try:
+        await membro.ban(reason=f"{staff.name} | {motivo}")
+        await log_punicao_bonito(guild, membro, staff, acao_log, motivo, prova_url)
+        return True
+    except:
+        return False
+
+async def log_filtro_automod(message, ocorrencia, texto_original):
+    config = obter_config(message.guild.id)
+    if not config or not (canal := bot.get_channel(config["canal_logs"])): return
+
+    embed = discord.Embed(title="🛡️ Filtro Automático Acionado", color=0xFFA500, timestamp=discord.utils.utcnow())
+    if message.author.display_avatar: embed.set_thumbnail(url=message.author.display_avatar.url)
+    
+    embed.add_field(name="👤 Usuário", value=f"{message.author.mention} (`{message.author.id}`)", inline=False)
+    embed.add_field(name="💬 Canal", value=f"{message.channel.mention}", inline=True)
+    embed.add_field(name="🚨 Ocorrência", value=f"`{ocorrencia}`", inline=True)
+    embed.add_field(name="🗑️ Mensagem Deletada", value=f"```{texto_original}```", inline=False)
+    
+    embed.set_footer(text=f"{config['nome']} • Automod", icon_url=message.guild.icon.url if message.guild.icon else None)
+    await canal.send(embed=embed)
+
+# ==================== AUDIT LOGS (OLHEIROS DA STAFF) ====================
 @bot.event
 async def on_member_ban(guild, user):
-    await asyncio.sleep(2)
+    if user.id in bot.ultimos_banimentos:
+        bot.ultimos_banimentos.remove(user.id)
+        return # Ignora se o bot mesmo já baniu (para não logar 2 vezes)
+
+    await asyncio.sleep(3)
     async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.ban):
         if entry.target.id == user.id:
             if entry.user.id == bot.user.id: return 
-            await log_punicao_bonito(guild, user, entry.user, "Banimento Manual (Painel Discord)", entry.reason or "Sem motivo preenchido.")
+            await log_punicao_bonito(guild, user, entry.user, "Banimento (Painel Discord)", entry.reason or "Nenhum motivo inserido.")
             return
 
 @bot.event
 async def on_member_unban(guild, user):
-    await asyncio.sleep(2)
+    await asyncio.sleep(3)
     async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.unban):
         if entry.target.id == user.id:
             if entry.user.id == bot.user.id: return
-            await log_punicao_bonito(guild, user, entry.user, "Desbanimento Manual", entry.reason or "Sem motivo preenchido.")
+            await log_punicao_bonito(guild, user, entry.user, "Desbanimento (Painel Discord)", entry.reason or "Nenhum motivo inserido.")
             return
 
 @bot.event
 async def on_member_update(before, after):
-    # Detecta Mute/Demute manual (Timeout)
     if before.timed_out_until != after.timed_out_until:
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
         if after.timed_out_until is not None:
             async for entry in before.guild.audit_logs(limit=5, action=discord.AuditLogAction.member_update):
                 if entry.target.id == after.id and hasattr(entry.after, 'timed_out_until'):
                     if entry.user.id == bot.user.id: return
-                    await log_punicao_bonito(before.guild, after, entry.user, "Mute Manual (Painel Discord)", entry.reason or "Sem motivo preenchido.")
+                    tempo = after.timed_out_until - discord.utils.utcnow()
+                    minutos = max(1, int(tempo.total_seconds() / 60))
+                    await log_punicao_bonito(before.guild, after, entry.user, f"Mute ({minutos} mins)", entry.reason or "Aplicado via botão direito/Painel.")
                     return
         elif after.timed_out_until is None:
             async for entry in before.guild.audit_logs(limit=5, action=discord.AuditLogAction.member_update):
                 if entry.target.id == after.id and hasattr(entry.before, 'timed_out_until') and not hasattr(entry.after, 'timed_out_until'):
                     if entry.user.id == bot.user.id: return
-                    await log_punicao_bonito(before.guild, after, entry.user, "Desmutado Manualmente", entry.reason or "Sem motivo preenchido.")
+                    await log_punicao_bonito(before.guild, after, entry.user, "Desmutado", entry.reason or "Aplicado via botão direito/Painel.")
                     return
 
-# ==================== SISTEMA DE ATENDIMENTO (TICKETS) ====================
+# ==================== TICKETS ====================
 class DropdownGhoul(discord.ui.Select):
     def __init__(self):
-        opcoes = [discord.SelectOption(label="Denúncias", value="denuncias", emoji="🚨"), discord.SelectOption(label="Suporte", value="suporte", emoji="🛠️"), discord.SelectOption(label="Dúvidas", value="duvidas", emoji="❓"), discord.SelectOption(label="Exposed", value="exposed", emoji="⚠️")]
+        opcoes = [discord.SelectOption(label="Denúncias", value="denuncias", emoji="🚨"), discord.SelectOption(label="Suporte", value="suporte", emoji="🛠️"), discord.SelectOption(label="Dúvidas", value="duvidas", emoji="❓")]
         super().__init__(placeholder="Selecione o setor...", min_values=1, max_values=1, options=opcoes, custom_id="sel_ghoul")
-    async def callback(self, interaction: discord.Interaction): await criar_canal_ticket(interaction, self.values[0], "GHOUL")
+    async def callback(self, interaction: discord.Interaction): await criar_canal_ticket(interaction, self.values[0])
 
 class DropdownKings(discord.ui.Select):
     def __init__(self):
-        opcoes = [discord.SelectOption(label="Comprar Robux", value="robux", emoji="💰"), discord.SelectOption(label="Frutas", value="frutas", emoji="🍎"), discord.SelectOption(label="Contas", value="contas", emoji="📦"), discord.SelectOption(label="Suporte Geral", value="suporte", emoji="🛠️")]
+        opcoes = [discord.SelectOption(label="Comprar Robux", value="robux", emoji="💰"), discord.SelectOption(label="Frutas", value="frutas", emoji="🍎"), discord.SelectOption(label="Suporte Geral", value="suporte", emoji="🛠️")]
         super().__init__(placeholder="Selecione o produto...", min_values=1, max_values=1, options=opcoes, custom_id="sel_kings")
-    async def callback(self, interaction: discord.Interaction): await criar_canal_ticket(interaction, self.values[0], "BLOX KINGS")
+    async def callback(self, interaction: discord.Interaction): await criar_canal_ticket(interaction, self.values[0])
 
 class DropdownNightware(discord.ui.Select):
     def __init__(self):
         opcoes = [discord.SelectOption(label="Comprar", value="compras", emoji="🛒"), discord.SelectOption(label="Financeiro", value="financeiro", emoji="💳"), discord.SelectOption(label="Suporte", value="suporte", emoji="🛠️")]
         super().__init__(placeholder="Selecione a categoria...", min_values=1, max_values=1, options=opcoes, custom_id="sel_nightware")
-    async def callback(self, interaction: discord.Interaction): await criar_canal_ticket(interaction, self.values[0], "NIGHTWARE STORE")
+    async def callback(self, interaction: discord.Interaction): await criar_canal_ticket(interaction, self.values[0])
 
 class ViewGhoul(discord.ui.View):
     def __init__(self): super().__init__(timeout=None); self.add_item(DropdownGhoul())
@@ -166,7 +214,7 @@ class ViewFechar(discord.ui.View):
         await asyncio.sleep(5)
         await interaction.channel.delete()
 
-async def criar_canal_ticket(interaction: discord.Interaction, setor: str, sv_nome: str):
+async def criar_canal_ticket(interaction: discord.Interaction, setor: str):
     config = obter_config(interaction.guild.id)
     if not config or interaction.response.is_done(): return
     categoria = discord.utils.get(interaction.guild.categories, id=config["categoria_tickets"])
@@ -180,150 +228,124 @@ async def criar_canal_ticket(interaction: discord.Interaction, setor: str, sv_no
     if cargo_staff: overwrites[cargo_staff] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
 
     canal = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}-{setor}", category=categoria, overwrites=overwrites)
-    embed = discord.Embed(title=f"🚨 Atendimento | {sv_nome}", description=f"Olá {interaction.user.mention}, seu ticket para **{setor.upper()}** foi aberto!\nDescreva seu problema para a Staff.", color=discord.Color.red())
+    embed = discord.Embed(title=f"🚨 Atendimento | {config['nome']}", description=f"Olá {interaction.user.mention}, seu ticket para **{setor.upper()}** foi aberto!\nDescreva seu problema.", color=0x2b2d31)
     await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewFechar())
     await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
 
-# ==================== EVENTOS E AUTO-MODERAÇÃO ====================
-@bot.event
-async def on_ready():
-    print(f"✅ {bot.user.name} online, sistema anti-duplicação ativo e visual atualizado!")
-
+# ==================== AUTOMOD E FILTROS ====================
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: return
     config = obter_config(message.guild.id)
-    if not config:
-        await bot.process_commands(message)
-        return
+    if not config: return
 
     is_staff = message.author.guild_permissions.manage_messages
 
     if not is_staff:
         texto_norm = normalizar_texto(message.content)
         
-        # 1. AUTO-BAN: Bio Check / Fakes
+        # 1. AUTO-BAN
         for termo in TERMOS_BAN:
             if termo in texto_norm:
-                mensagens_ignoradas_log.add(message.id) # Evita duplicar no log de deletadas
+                bot.mensagens_ignoradas.add(message.id)
                 await message.delete()
-                try:
-                    await message.author.ban(reason="Bot Fake / Bio Check automático detectado.")
-                    await log_punicao_bonito(message.guild, message.author, bot.user, "Banimento Automático", f"Tentativa de golpe/spam com o termo: `{termo}`")
-                except: pass
+                await executar_banimento(message.guild, message.author, bot.user, f"Tentativa de golpe: `{termo}`", "Ban (Automático)")
                 return
 
-        # 2. ANTI-PALAVRÃO: Apaga Totalmente a Mensagem (Sem duplicar log!)
+        # 2. ANTI-PALAVRÃO
         for palavrao in PALAVROES:
             if palavrao in texto_norm:
-                try:
-                    mensagens_ignoradas_log.add(message.id) # Evita duplicar no log de deletadas
-                    await message.delete()
-                except: pass
+                bot.mensagens_ignoradas.add(message.id)
+                await message.delete()
+                await log_filtro_automod(message, "Palavrão/Xingamento Detectado", message.content)
                 return 
 
-        # 3. AUTO-BAN: Imagens bloqueadas
+        # 3. IMAGENS BLOQUEADAS
         if message.attachments:
             for anexo in message.attachments:
                 if any(anexo.filename.lower().endswith(ext) for ext in ["png", "jpg", "jpeg", "webp"]):
                     try:
                         response = requests.get(anexo.url)
                         img = Image.open(BytesIO(response.content))
-                        hash_img = str(imagehash.average_hash(img))
-                        if hash_img in IMAGENS_BLOQUEADAS:
-                            mensagens_ignoradas_log.add(message.id)
+                        if str(imagehash.average_hash(img)) in IMAGENS_BLOQUEADAS:
+                            bot.mensagens_ignoradas.add(message.id)
                             await message.delete()
-                            await message.author.ban(reason="Imagem maliciosa/proibida enviada.")
-                            await log_punicao_bonito(message.guild, message.author, bot.user, "Banimento Automático", "Envio de imagem na Blacklist.", anexo.url)
+                            await executar_banimento(message.guild, message.author, bot.user, "Envio de imagem proibida.", "Ban (Automático)", anexo.url)
                             return
                     except: pass
 
-        # 4. ANTI-LINK: Apaga, Muta 1 Hora e Loga Punição
+        # 4. ANTI-LINK (MUTE 1H)
         if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):
-            mensagens_ignoradas_log.add(message.id)
+            bot.mensagens_ignoradas.add(message.id)
             await message.delete()
             try:
-                await message.author.timeout(datetime.timedelta(hours=1), reason="Divulgação de link de convite.")
-                await log_punicao_bonito(message.guild, message.author, bot.user, "Mute Automático (1 Hora)", "Divulgação de link de convite Discord.")
+                await message.author.timeout(datetime.timedelta(hours=1), reason="Divulgação Automática.")
+                await log_punicao_bonito(message.guild, message.author, bot.user, "Mute 1 Hora (Automático)", "Divulgação de link de convite.")
             except: pass
             return
 
-    await bot.process_commands(message)
-
-# ==================== COMANDOS MANUAIS ====================
-@bot.command()
-@commands.has_permissions(moderate_members=True)
-async def mute(ctx, membro: discord.Member, tempo_minutos: int, *, motivo="Sem motivo"):
-    await ctx.message.delete()
-    try:
-        await membro.timeout(datetime.timedelta(minutes=tempo_minutos), reason=f"{ctx.author.name} | {motivo}")
-        await ctx.send(f"🔇 {membro.mention} mutado por {tempo_minutos} min.", delete_after=5)
-        await log_punicao_bonito(ctx.guild, membro, ctx.author, f"Mute Manual ({tempo_minutos} min)", motivo)
-    except: pass
-
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def ban(ctx, membro: discord.Member, *, motivo="Sem motivo especificado"):
-    await ctx.message.delete()
-    prova_url = ctx.message.attachments[0].url if ctx.message.attachments else None
-    try:
-        await membro.ban(reason=f"{ctx.author.name} | {motivo}")
-        await ctx.send(f"🔨 {membro.name} banido com sucesso!", delete_after=5)
-        await log_punicao_bonito(ctx.guild, membro, ctx.author, "Banimento Manual", motivo, prova_url)
-    except: pass
-
-@bot.command()
-@commands.has_permissions(ban_members=True)
-async def unban(ctx, user_id: int):
-    await ctx.message.delete()
-    user = await bot.fetch_user(user_id)
-    await ctx.guild.unban(user)
-    await ctx.send(f"🕊️ {user.name} desbanido!", delete_after=5)
-
-# ==================== COMANDOS DE PAINEIS ====================
-@bot.command(name="ticket_ghoul")
-@commands.has_permissions(administrator=True)
-async def ticket_ghoul(ctx):
-    await ctx.message.delete()
-    embed = discord.Embed(title="🛡️ CENTRAL DE ATENDIMENTO - GHOUL", description="Abra seu ticket abaixo.", color=0xFF0000)
-    if IMAGENS_TICKETS["GHOUL"]: embed.set_image(url=IMAGENS_TICKETS["GHOUL"])
-    await ctx.send(embed=embed, view=ViewGhoul())
-
-@bot.command(name="ticket_kings")
-@commands.has_permissions(administrator=True)
-async def ticket_kings(ctx):
-    await ctx.message.delete()
-    embed = discord.Embed(title="👑 CENTRAL DE ATENDIMENTO - BLOX KINGS", description="Compre Robux e frutas abaixo.", color=0xFF0000)
-    if IMAGENS_TICKETS["BLOX_KINGS"]: embed.set_image(url=IMAGENS_TICKETS["BLOX_KINGS"])
-    await ctx.send(embed=embed, view=ViewKings())
-
-@bot.command(name="ticket_nightware")
-@commands.has_permissions(administrator=True)
-async def ticket_nightware(ctx):
-    await ctx.message.delete()
-    embed = discord.Embed(title="🛍️ CENTRAL DE ATENDIMENTO - NIGHTWARE", description="Compre nossos produtos abaixo.", color=0xFF0000)
-    if IMAGENS_TICKETS["NIGHTWARE"]: embed.set_image(url=IMAGENS_TICKETS["NIGHTWARE"])
-    await ctx.send(embed=embed, view=ViewNightware())
-
-# ==================== LOGS DE MENSAGENS APAGADAS ====================
 @bot.event
 async def on_message_delete(message):
     if message.author.bot or not message.guild: return
-    
-    # Se foi o automod que apagou, ignora para não mandar log duplicado!
-    if message.id in mensagens_ignoradas_log:
-        mensagens_ignoradas_log.discard(message.id)
+    if message.id in bot.mensagens_ignoradas:
+        bot.mensagens_ignoradas.remove(message.id)
         return
 
     config = obter_config(message.guild.id)
     if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title="🗑️ Mensagem Apagada", color=0xFF0000)
-        embed.set_author(name=f"{message.author.name} ({message.author.id})", icon_url=message.author.avatar.url if message.author.avatar else None)
-        embed.add_field(name="📍 Canal", value=message.channel.mention, inline=True)
-        if message.content: 
-            embed.add_field(name="💬 Conteúdo Original", value=f"```{message.content[:1000]}```", inline=False)
-        embed.set_footer(text=f"{config['nome']} Security • {datetime.datetime.now().strftime('%d/%m/%Y às %H:%M')}")
+        embed = discord.Embed(title="🗑️ Mensagem Apagada", description=f"{message.author.mention} apagou uma mensagem em {message.channel.mention}.", color=0x2b2d31, timestamp=discord.utils.utcnow())
+        if message.content: embed.add_field(name="Conteúdo Original", value=f"```{message.content[:1000]}```", inline=False)
+        embed.set_footer(text=f"{config['nome']} • Logs Gerais", icon_url=message.guild.icon.url if message.guild.icon else None)
         await canal_logs.send(embed=embed)
+
+# ==================== COMANDOS MODERNOS (SLASH COMMANDS /) ====================
+@bot.tree.command(name="mute", description="Muta um membro no servidor.")
+@app_commands.default_permissions(moderate_members=True)
+async def mute_slash(interaction: discord.Interaction, membro: discord.Member, tempo_minutos: int, motivo: str = "Sem motivo"):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        await membro.timeout(datetime.timedelta(minutes=tempo_minutos), reason=f"{interaction.user.name} | {motivo}")
+        await interaction.followup.send(f"✅ O usuário {membro.mention} foi mutado por {tempo_minutos} minutos com sucesso.")
+        await log_punicao_bonito(interaction.guild, membro, interaction.user, f"Mute Manual ({tempo_minutos} mins)", motivo)
+    except:
+        await interaction.followup.send("❌ Ocorreu um erro. Verifique se meu cargo está acima do usuário.")
+
+@bot.tree.command(name="ban", description="Bane um membro do servidor.")
+@app_commands.default_permissions(ban_members=True)
+async def ban_slash(interaction: discord.Interaction, membro: discord.Member, motivo: str = "Sem motivo especificado"):
+    await interaction.response.defer(ephemeral=True)
+    sucesso = await executar_banimento(interaction.guild, membro, interaction.user, motivo, "Banimento Manual")
+    if sucesso:
+        await interaction.followup.send(f"🔨 O usuário {membro.mention} foi banido com sucesso.")
+    else:
+        await interaction.followup.send("❌ Erro ao banir. Meu cargo está abaixo dele?")
+
+@bot.tree.command(name="painel_tickets", description="Envia o painel de tickets do servidor atual.")
+@app_commands.default_permissions(administrator=True)
+async def painel_slash(interaction: discord.Interaction):
+    config = obter_config(interaction.guild.id)
+    if not config:
+        return await interaction.response.send_message("❌ Servidor não configurado.", ephemeral=True)
+    
+    nome = config["nome"]
+    embed = discord.Embed(title=f"🛡️ CENTRAL DE ATENDIMENTO - {nome}", description="Selecione uma opção no menu abaixo para abrir seu ticket.", color=0x2b2d31)
+    
+    if "GHOUL" in nome:
+        embed.set_image(url=IMAGENS_TICKETS["GHOUL"])
+        view = ViewGhoul()
+    elif "BLOX" in nome:
+        embed.set_image(url=IMAGENS_TICKETS["BLOX_KINGS"])
+        view = ViewKings()
+    else:
+        embed.set_image(url=IMAGENS_TICKETS["NIGHTWARE"])
+        view = ViewNightware()
+
+    await interaction.channel.send(embed=embed, view=view)
+    await interaction.response.send_message("Painel enviado!", ephemeral=True)
+
+@bot.event
+async def on_ready():
+    print(f"✅ {bot.user.name} online! Comandos de barra sincronizados.")
 
 TOKEN = os.getenv('TOKEN')
 bot.run(TOKEN)
