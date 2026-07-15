@@ -29,11 +29,12 @@ CONFIG_SERVIDORES = {
     1331323352840933497: {"nome": "NIGHTWARE STORE", "canal_logs": 1527037894743687168, "canal_punicoes": 1527038039111635114, "categoria_tickets": 1331327159448375356, "cargo_staff": 1333982207701684294}
 }
 
+# ⚠️ O erro estava aqui! Agora está com todas as vírgulas corretas:
 IMAGENS_TICKETS = {
     "GHOUL": "https://cdn.discordapp.com/attachments/1444429504838631586/1454170002746769530/Banner_ticket_20250205_120340_0000.png",
+    "COD": "https://cdn.discordapp.com/attachments/1183819407013707947/1469731813709578417/GHOUL_20260207_132912_0000.png",
     "BLOX_KINGS": "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png",
     "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif"
-    "COD": "https://cdn.discordapp.com/attachments/1183819407013707947/1469731813709578417/GHOUL_20260207_132912_0000.png"
 }
 
 TERMOS_BAN = ["checkmybio", "checkmyprofile", "lookmybio", "lookatmybio", "checkbio", "olharabiografia", "olheminhabio", "freenitro", "nitrogratis", "onlyfansfree"]
@@ -45,7 +46,7 @@ class MeuBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=discord.Intents.all(), help_command=None)
         self.mensagens_ignoradas = set()
-        self.ultimos_banimentos = set() # Evita duplicar log de banimento
+        self.ultimos_banimentos = set() 
 
     async def setup_hook(self):
         self.add_view(ViewGhoul())
@@ -65,7 +66,7 @@ def normalizar_texto(texto):
         texto = texto.replace(orig, sub)
     return re.sub(r'[^a-z0-9\s]', '', texto)
 
-# ==================== SISTEMA DE PUNIÇÕES (LOGS) ====================
+# ==================== SISTEMA DE PUNIÇÕES (LOGS E CARTA DE BAN) ====================
 async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     config = obter_config(guild.id)
     if not config or not (canal := bot.get_channel(config["canal_punicoes"])): return
@@ -77,7 +78,6 @@ async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     embed.add_field(name="🛡️ Staff", value=f"{staff.mention}", inline=True)
     embed.add_field(name="📄 Motivo Original", value=f"```{motivo}```", inline=False)
     
-    # Se for um Banimento, adiciona a carta do GHOUL
     if "Ban" in acao:
         carta_ghoul = (
             f"**GHOUL | Aviso de Banimento**\n\n"
@@ -99,10 +99,8 @@ async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     await canal.send(embed=embed)
 
 async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=None):
-    # Evita logs duplicados no Audit Log
     bot.ultimos_banimentos.add(membro.id)
     
-    # Tenta enviar a carta na DM antes de banir
     carta_dm = (
         f"**GHOUL | Aviso de Banimento**\n\n"
         f"Caro {membro.mention},\n\n"
@@ -115,9 +113,8 @@ async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=N
     )
     try:
         await membro.send(carta_dm)
-    except: pass # Se a DM estiver fechada, apenas ignora e bane
+    except: pass 
 
-    # Aplica o Ban e Loga
     try:
         await membro.ban(reason=f"{staff.name} | {motivo}")
         await log_punicao_bonito(guild, membro, staff, acao_log, motivo, prova_url)
@@ -140,12 +137,12 @@ async def log_filtro_automod(message, ocorrencia, texto_original):
     embed.set_footer(text=f"{config['nome']} • Automod", icon_url=message.guild.icon.url if message.guild.icon else None)
     await canal.send(embed=embed)
 
-# ==================== AUDIT LOGS (OLHEIROS DA STAFF) ====================
+# ==================== AUDIT LOGS ====================
 @bot.event
 async def on_member_ban(guild, user):
     if user.id in bot.ultimos_banimentos:
         bot.ultimos_banimentos.remove(user.id)
-        return # Ignora se o bot mesmo já baniu (para não logar 2 vezes)
+        return 
 
     await asyncio.sleep(3)
     async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.ban):
@@ -233,7 +230,7 @@ async def criar_canal_ticket(interaction: discord.Interaction, setor: str):
     await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewFechar())
     await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
 
-# ==================== AUTOMOD E FILTROS ====================
+# ==================== AUTOMOD ====================
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: return
@@ -245,7 +242,6 @@ async def on_message(message):
     if not is_staff:
         texto_norm = normalizar_texto(message.content)
         
-        # 1. AUTO-BAN
         for termo in TERMOS_BAN:
             if termo in texto_norm:
                 bot.mensagens_ignoradas.add(message.id)
@@ -253,7 +249,6 @@ async def on_message(message):
                 await executar_banimento(message.guild, message.author, bot.user, f"Tentativa de golpe: `{termo}`", "Ban (Automático)")
                 return
 
-        # 2. ANTI-PALAVRÃO
         for palavrao in PALAVROES:
             if palavrao in texto_norm:
                 bot.mensagens_ignoradas.add(message.id)
@@ -261,7 +256,6 @@ async def on_message(message):
                 await log_filtro_automod(message, "Palavrão/Xingamento Detectado", message.content)
                 return 
 
-        # 3. IMAGENS BLOQUEADAS
         if message.attachments:
             for anexo in message.attachments:
                 if any(anexo.filename.lower().endswith(ext) for ext in ["png", "jpg", "jpeg", "webp"]):
@@ -275,7 +269,6 @@ async def on_message(message):
                             return
                     except: pass
 
-        # 4. ANTI-LINK (MUTE 1H)
         if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):
             bot.mensagens_ignoradas.add(message.id)
             await message.delete()
@@ -321,28 +314,35 @@ async def ban_slash(interaction: discord.Interaction, membro: discord.Member, mo
     else:
         await interaction.followup.send("❌ Erro ao banir. Meu cargo está abaixo dele?")
 
-@bot.tree.command(name="painel_tickets", description="Envia o painel de tickets do servidor atual.")
+# AGORA COM OPÇÃO DE ESCOLHER O PAINEL MANUALMENTE!
+@bot.tree.command(name="painel_tickets", description="Envia o painel de tickets selecionado.")
+@app_commands.choices(painel=[
+    app_commands.Choice(name="GHOUL", value="ghoul"),
+    app_commands.Choice(name="BLOX KINGS", value="kings"),
+    app_commands.Choice(name="NIGHTWARE", value="nightware"),
+    app_commands.Choice(name="COD", value="cod")
+])
 @app_commands.default_permissions(administrator=True)
-async def painel_slash(interaction: discord.Interaction):
-    config = obter_config(interaction.guild.id)
-    if not config:
-        return await interaction.response.send_message("❌ Servidor não configurado.", ephemeral=True)
-    
-    nome = config["nome"]
-    embed = discord.Embed(title=f"🛡️ CENTRAL DE ATENDIMENTO - {nome}", description="Selecione uma opção no menu abaixo para abrir seu ticket.", color=0x2b2d31)
-    
-    if "GHOUL" in nome:
+async def painel_slash(interaction: discord.Interaction, painel: app_commands.Choice[str]):
+    if painel.value == "ghoul":
+        embed = discord.Embed(title="🛡️ CENTRAL DE ATENDIMENTO - GHOUL", description="Selecione uma opção no menu abaixo para abrir seu ticket.", color=0x2b2d31)
         embed.set_image(url=IMAGENS_TICKETS["GHOUL"])
         view = ViewGhoul()
-    elif "BLOX" in nome:
+    elif painel.value == "kings":
+        embed = discord.Embed(title="👑 CENTRAL DE ATENDIMENTO - BLOX KINGS", description="Selecione uma opção no menu abaixo para abrir seu ticket.", color=0x2b2d31)
         embed.set_image(url=IMAGENS_TICKETS["BLOX_KINGS"])
         view = ViewKings()
-    else:
+    elif painel.value == "nightware":
+        embed = discord.Embed(title="🛍️ CENTRAL DE ATENDIMENTO - NIGHTWARE", description="Selecione uma opção no menu abaixo para abrir seu ticket.", color=0x2b2d31)
         embed.set_image(url=IMAGENS_TICKETS["NIGHTWARE"])
         view = ViewNightware()
+    elif painel.value == "cod":
+        embed = discord.Embed(title="🎯 CENTRAL DE ATENDIMENTO - COD", description="Selecione uma opção no menu abaixo para abrir seu ticket.", color=0x2b2d31)
+        embed.set_image(url=IMAGENS_TICKETS["COD"])
+        view = ViewGhoul() # Usando os mesmos botões de setor do Ghoul para o COD
 
     await interaction.channel.send(embed=embed, view=view)
-    await interaction.response.send_message("Painel enviado!", ephemeral=True)
+    await interaction.response.send_message(f"✅ Painel {painel.name} enviado com sucesso!", ephemeral=True)
 
 @bot.event
 async def on_ready():
