@@ -545,8 +545,11 @@ async def on_message_edit(before, after):
 
         conteudo_antigo = before.content[:1000] if before.content else "Mídia ou embed"
         conteudo_novo = after.content[:1000] if after.content else "Mídia ou embed"
-
-        embed.description = f"👤 **Usuário:** {before.author.mention} ({before.author.id})\n💬 **Canal:** {before.channel.mention}\n\n**Conteúdo Anterior:**\nembed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
+# ... existing code ...
+    embed.description = f"👤 **Usuário:** {before.author.mention} ({before.author.id})\n💬 **Canal:** {before.channel.mention}\n\n**Conteúdo Anterior:**\n
+```{conteudo_antigo}```\n**Conteúdo Novo:**\n```{conteudo_novo}```"
+    embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
+# ... existing code ...
         await canal_logs.send(embed=embed)
 
 # ==================== COMANDOS DE BARRA (#950606) ====================
