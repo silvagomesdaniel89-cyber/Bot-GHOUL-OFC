@@ -518,13 +518,15 @@ async def on_message(message):
     # 3. Filtro de Imagens Proibidas (Filtro Inteligente Tolerante a Qualidade)
     if message.attachments:
         for anexo in message.attachments:
-            if anexo.content_type and anexo.content_type.startswith("image/"):
+            filename_lower = anexo.filename.lower()
+            # Validamos a extensão da imagem diretamente pelo nome do ficheiro para evitar falhas de CDN do Discord
+            if any(filename_lower.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp", ".gif"]):
                 try:
-                    # Discord exige cabeçalho simulando navegador para baixar mídias do CDN de forma confiável
-                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    # Discord exige cabeçalho de navegador para descarregar mídias de forma confiável
+                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
                     response = requests.get(anexo.url, headers=headers, timeout=10)
                     
-                    # Converte para RGB para garantir que imagens em paleta de cores ou transparentes sejam computadas sem dar erro
+                    # Converte para RGB para garantir que imagens em paleta de cores ou transparentes sejam computadas sem erro
                     img = Image.open(BytesIO(response.content)).convert('RGB')
                     img_hash = imagehash.average_hash(img)
                     
@@ -569,6 +571,14 @@ async def on_message_delete(message):
             
         conteudo = message.content[:1000] if message.content else "Mensagem vazia ou apenas mídia"
         embed.description = f"👤 **Usuário:** {message.author.mention} ({message.author.id})\n💬 **Canal:** {message.channel.mention}\n\n**Conteúdo Original:**\n```{conteudo}```"
+        
+        # Mostra a imagem apagada diretamente no log de mensagem apagada!
+        if message.attachments:
+            for anexo in message.attachments:
+                if anexo.url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    embed.set_image(url=anexo.url)
+                    break # Exibe o primeiro anexo de imagem encontrado no embed
+        
         embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=message.guild.icon.url if message.guild.icon else None)
         await canal_logs.send(embed=embed)
 
