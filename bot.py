@@ -461,24 +461,24 @@ async def on_message(message):
     if not config: 
         return
 
-    is_staff = message.author.guild_permissions.manage_messages
-    is_admin = message.author.guild_permissions.administrator
     texto_norm = normalizar_texto(message.content)
+    # Remove ABSOLUTAMENTE TODOS OS ESPAÇOS para impedir burla como "c h e c k m y b i o"
+    texto_junto = texto_norm.replace(" ", "")
     
     # 1. Filtro de Termos Proibidos (Mensagens Fake / Ban Automático)
     for termo in TERMOS_BAN:
-        if termo in texto_norm:
+        if termo in texto_junto:
             bot.mensagens_ignoradas.add(message.id)
             try: await message.delete()
             except: pass
             
-            if not is_admin: 
-                await executar_banimento(message.guild, message.author, bot.user, f"Tentativa de golpe (Mensagem Fake): `{termo}`", "Ban (Automático)")
+            # Executa banimento e manda para os logs sem exceção de Staff
+            await executar_banimento(message.guild, message.author, bot.user, f"Tentativa de golpe (Mensagem Fake): `{termo}`", "Ban (Automático)")
             return
 
     # 2. Filtro de Palavrões / Xingamentos
     for palavrao in PALAVROES:
-        if palavrao in texto_norm:
+        if palavrao in texto_junto:
             bot.mensagens_ignoradas.add(message.id)
             try: await message.delete()
             except: pass
@@ -486,21 +486,26 @@ async def on_message(message):
             await log_filtro_automod(message, "Palavrão/Xingamento Detectado", message.content)
             return 
 
-    # 3. Filtro de Imagens Proibidas (Filtro por Hash)
+    # 3. Filtro de Imagens Proibidas (Filtro Inteligente Tolerante a Qualidade)
     if message.attachments:
         for anexo in message.attachments:
             if any(anexo.filename.lower().endswith(ext) for ext in ["png", "jpg", "jpeg", "webp"]):
                 try:
-                    response = requests.get(anexo.url)
+                    response = requests.get(anexo.url, timeout=5)
                     img = Image.open(BytesIO(response.content))
-                    if str(imagehash.average_hash(img)) in IMAGENS_BLOQUEADAS:
-                        bot.mensagens_ignoradas.add(message.id)
-                        try: await message.delete()
-                        except: pass
-                        
-                        if not is_admin:
+                    img_hash = imagehash.average_hash(img)
+                    
+                    for hash_bloqueado in IMAGENS_BLOQUEADAS:
+                        hash_alvo = imagehash.hex_to_hash(hash_bloqueado)
+                        # Verifica se as imagens são semelhantes (distância máxima de 4 pontos) - Pega variações!
+                        if img_hash - hash_alvo <= 4:
+                            bot.mensagens_ignoradas.add(message.id)
+                            try: await message.delete()
+                            except: pass
+                            
+                            # Executa banimento sem exceção
                             await executar_banimento(message.guild, message.author, bot.user, "Envio de imagem proibida.", "Ban (Automático)", anexo.url)
-                        return
+                            return
                 except: pass
 
     # 4. Filtro de Convites/Links Proibidos
@@ -509,12 +514,11 @@ async def on_message(message):
         try: await message.delete()
         except: pass
         
-        if not is_staff: 
-            try:
-                bot.ultimos_mutes.add(message.author.id)
-                await message.author.timeout(datetime.timedelta(hours=1), reason="Divulgação Automática.")
-                await log_punicao_bonito(message.guild, message.author, bot.user, "Mute 1 Hora (Automático)", "Divulgação de link de convite.")
-            except: pass
+        try:
+            bot.ultimos_mutes.add(message.author.id)
+            await message.author.timeout(datetime.timedelta(hours=1), reason="Divulgação Automática.")
+            await log_punicao_bonito(message.guild, message.author, bot.user, "Mute 1 Hora (Automático)", "Divulgação de link de convite.")
+        except: pass
         return
 
 @bot.event
@@ -543,14 +547,9 @@ async def on_message_edit(before, after):
         embed = discord.Embed(title=f"📝 {config['nome']} - Mensagem Editada", color=0x950606, timestamp=discord.utils.utcnow())
         if before.author.display_avatar: embed.set_thumbnail(url=before.author.display_avatar.url)
 
-        conteudo_antigo = before.content[:1000] if before.content else "Mídia ou embed"
-        conteudo_novo = after.content[:1000] if after.content else "Mídia ou embed"
-# ... existing code ...
-        # Define as variáveis de conteúdo
         conteudo_antigo = before.content[:1000] if before.content else "Sem conteúdo"
         conteudo_novo = after.content[:1000] if after.content else "Sem conteúdo"
 
-        # Abertura com 3 aspas permite pular linhas sem erro de sintaxe
         embed.description = f"""👤 **Usuário:** {before.author.mention} ({before.author.id})
 💬 **Canal:** {before.channel.mention}
 
@@ -562,7 +561,6 @@ async def on_message_edit(before, after):
         
         embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
         await canal_logs.send(embed=embed)
-# ... existing code ...
 
 # ==================== COMANDOS DE BARRA (#950606) ====================
 @bot.tree.command(name="mute", description="Silencia um membro no servidor temporariamente.")
