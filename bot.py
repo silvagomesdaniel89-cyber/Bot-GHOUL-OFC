@@ -120,26 +120,15 @@ async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     if user.display_avatar: 
         embed.set_thumbnail(url=user.display_avatar.url)
     
+    # Layout de punição super compacto, limpo e direto conforme solicitado
     description = (
-        f"👤 **Usuário:** {user.mention} ({user.id})\n"
+        f"👤 **Usuário:** {user.mention}\n"
+        f"📛 **Nick:** `{user.name}`\n"
+        f"🆔 **ID:** `{user.id}`\n"
         f"🛡️ **Staff:** {staff.mention}\n"
-        f"🚨 **Ação:** `{acao}`\n\n"
+        f"🚨 **Ação:** `{acao}`\n"
+        f"📄 **Motivo:** {motivo}\n"
     )
-    
-    if "Ban" in acao:
-        carta_ghoul = (
-            f"**Aviso de Banimento:**\n"
-            f"Caro(a) {user.mention},\n\n"
-            f"Você foi banido(a) do servidor por violar as nossas regras. Lamentamos profundamente que tenha decidido ignorar as normas que estabelecemos para manter a segurança e o respeito mútuo dentro da nossa comunidade. O seu comportamento não foi tolerado e resultou nesta ação.\n\n"
-            f"É imperativo que todos os membros sigam as diretrizes estabelecidas para garantir um ambiente seguro e acolhedor para todos os utilizadores.\n\n"
-            f"Se tiver dúvidas sobre o banimento ou quiser discutir o assunto, pode contactar a moderação. No entanto, a decisão de banir permanece final e não será revertida sem uma consideração significativa.\n\n"
-            f"Desejamos sinceramente que aprenda com esta experiência e que possa refletir sobre as suas ações futuras.\n\n"
-            f"*Atenciosamente,*\n"
-            f"**Equipe de Moderação - {config['nome']}**\n\n"
-        )
-        description += carta_ghoul
-
-    description += f"**Motivo Original:**\n```{motivo}```"
     embed.description = description
 
     if prova_url:
@@ -171,7 +160,8 @@ async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=N
         await membro.ban(reason=f"{staff.name} | {motivo}")
         await log_punicao_bonito(guild, membro, staff, acao_log, motivo, prova_url)
         return True
-    except:
+    except Exception as e:
+        print(f"[ERRO PERMISSÃO] Não foi possível banir o usuário {membro.name} ({membro.id}). Detalhe: {e}")
         return False
 
 async def log_filtro_automod(message, ocorrencia, texto_original):
@@ -188,7 +178,9 @@ async def log_filtro_automod(message, ocorrencia, texto_original):
         embed.set_thumbnail(url=message.author.display_avatar.url)
     
     embed.description = (
-        f"👤 **Usuário:** {message.author.mention} ({message.author.id})\n"
+        f"👤 **Usuário:** {message.author.mention}\n"
+        f"📛 **Nick:** `{message.author.name}`\n"
+        f"🆔 **ID:** `{message.author.id}`\n"
         f"💬 **Canal:** {message.channel.mention}\n"
         f"🚨 **Ocorrência:** `{ocorrencia}`\n\n"
         f"**Mensagem Deletada:**\n"
@@ -300,6 +292,28 @@ async def on_member_update(before, after):
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
             await canal_logs.send(embed=embed)
 
+    # Log de Avatar do Servidor (Guild Specific Avatar)
+    if before.guild_avatar != after.guild_avatar:
+        if canal_logs:
+            embed = discord.Embed(
+                title=f"🖼️ {config['nome']} - Alteração de Avatar do Servidor",
+                color=0x950606,
+                timestamp=discord.utils.utcnow()
+            )
+            avatar_antigo = before.guild_avatar.url if before.guild_avatar else (before.avatar.url if before.avatar else before.default_avatar.url)
+            avatar_novo = after.guild_avatar.url if after.guild_avatar else (after.avatar.url if after.avatar else after.default_avatar.url)
+            
+            embed.description = (
+                f"👤 **Membro:** {after.mention} ({after.id})\n"
+                f"📸 **Avatar Anterior:** [Clique para abrir]({avatar_antigo})\n"
+                f"✨ **Avatar Novo:** [Clique para abrir]({avatar_novo})\n\n"
+                f"*O membro mudou sua foto de perfil específica neste servidor.*"
+            )
+            embed.set_thumbnail(url=avatar_antigo)
+            embed.set_image(url=avatar_novo)
+            embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
+            await canal_logs.send(embed=embed)
+
 @bot.event
 async def on_user_update(before, after):
     for guild in bot.guilds:
@@ -318,12 +332,27 @@ async def on_user_update(before, after):
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
             await canal_logs.send(embed=embed)
 
-        # Avatar
+        # Avatar Global (Corrige o bug de não mostrar o antigo e novo lado a lado)
         if before.avatar != after.avatar:
-            embed = discord.Embed(title=f"🖼️ {config['nome']} - Alteração de Avatar", color=0x950606, timestamp=discord.utils.utcnow())
-            embed.description = f"👤 **Membro:** {member.mention} ({member.id})\n*O membro alterou sua foto de perfil.*"
-            if before.display_avatar: embed.add_field(name="Avatar Anterior", value=f"[Ver Foto]({before.display_avatar.url})")
-            if after.display_avatar: embed.set_image(url=after.display_avatar.url)
+            embed = discord.Embed(
+                title=f"🖼️ {config['nome']} - Alteração de Avatar", 
+                color=0x950606, 
+                timestamp=discord.utils.utcnow()
+            )
+            
+            # Garante que pegamos as URLs corretas mesmo após a alteração
+            avatar_antigo_url = before.avatar.url if before.avatar else before.default_avatar.url
+            avatar_novo_url = after.avatar.url if after.avatar else after.default_avatar.url
+
+            embed.description = (
+                f"👤 **Membro:** {member.mention} ({member.id})\n"
+                f"📸 **Avatar Anterior:** [Clique para abrir]({avatar_antigo_url})\n"
+                f"✨ **Avatar Novo:** [Clique para abrir]({avatar_novo_url})\n\n"
+                f"*O membro alterou sua foto de perfil global. O avatar anterior está na miniatura (canto direito) e o novo está ampliado abaixo.*"
+            )
+            # Mostra o antigo como uma miniatura pequena no canto e o novo gigante abaixo!
+            embed.set_thumbnail(url=avatar_antigo_url)
+            embed.set_image(url=avatar_novo_url)
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
             await canal_logs.send(embed=embed)
 
@@ -463,7 +492,7 @@ async def on_message(message):
 
     texto_norm = normalizar_texto(message.content)
     # Remove ABSOLUTAMENTE TODOS OS ESPAÇOS para impedir burla como "c h e c k m y b i o"
-    texto_junto = texto_norm.replace(" ", "")
+    texto_junto = re.sub(r'\s+', '', texto_norm)
     
     # 1. Filtro de Termos Proibidos (Mensagens Fake / Ban Automático)
     for termo in TERMOS_BAN:
@@ -489,16 +518,20 @@ async def on_message(message):
     # 3. Filtro de Imagens Proibidas (Filtro Inteligente Tolerante a Qualidade)
     if message.attachments:
         for anexo in message.attachments:
-            if any(anexo.filename.lower().endswith(ext) for ext in ["png", "jpg", "jpeg", "webp"]):
+            if anexo.content_type and anexo.content_type.startswith("image/"):
                 try:
-                    response = requests.get(anexo.url, timeout=5)
-                    img = Image.open(BytesIO(response.content))
+                    # Discord exige cabeçalho simulando navegador para baixar mídias do CDN de forma confiável
+                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    response = requests.get(anexo.url, headers=headers, timeout=10)
+                    
+                    # Converte para RGB para garantir que imagens em paleta de cores ou transparentes sejam computadas sem dar erro
+                    img = Image.open(BytesIO(response.content)).convert('RGB')
                     img_hash = imagehash.average_hash(img)
                     
                     for hash_bloqueado in IMAGENS_BLOQUEADAS:
                         hash_alvo = imagehash.hex_to_hash(hash_bloqueado)
-                        # Verifica se as imagens são semelhantes (distância máxima de 4 pontos) - Pega variações!
-                        if img_hash - hash_alvo <= 4:
+                        # Com distância Hamming <= 8, o bot pega qualquer variação, corte leve ou mudança de tamanho da foto
+                        if img_hash - hash_alvo <= 8:
                             bot.mensagens_ignoradas.add(message.id)
                             try: await message.delete()
                             except: pass
@@ -506,7 +539,8 @@ async def on_message(message):
                             # Executa banimento sem exceção
                             await executar_banimento(message.guild, message.author, bot.user, "Envio de imagem proibida.", "Ban (Automático)", anexo.url)
                             return
-                except: pass
+                except Exception as e:
+                    print(f"[Aviso Automod] Não foi possível analisar imagem: {e}")
 
     # 4. Filtro de Convites/Links Proibidos
     if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):
