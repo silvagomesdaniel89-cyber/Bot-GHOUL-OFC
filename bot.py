@@ -546,11 +546,23 @@ async def on_message_edit(before, after):
         conteudo_antigo = before.content[:1000] if before.content else "Mídia ou embed"
         conteudo_novo = after.content[:1000] if after.content else "Mídia ou embed"
 # ... existing code ...
-    embed.description = f"👤 **Usuário:** {before.author.mention} ({before.author.id})\n💬 **Canal:** {before.channel.mention}\n\n**Conteúdo Anterior:**\n
-```{conteudo_antigo}```\n**Conteúdo Novo:**\n```{conteudo_novo}```"
-    embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
-# ... existing code ...
+        # Define as variáveis de conteúdo
+        conteudo_antigo = before.content[:1000] if before.content else "Sem conteúdo"
+        conteudo_novo = after.content[:1000] if after.content else "Sem conteúdo"
+
+        # Abertura com 3 aspas permite pular linhas sem erro de sintaxe
+        embed.description = f"""👤 **Usuário:** {before.author.mention} ({before.author.id})
+💬 **Canal:** {before.channel.mention}
+
+**Conteúdo Anterior:**
+```{conteudo_antigo}```
+
+**Conteúdo Novo:**
+```{conteudo_novo}```"""
+        
+        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
         await canal_logs.send(embed=embed)
+# ... existing code ...
 
 # ==================== COMANDOS DE BARRA (#950606) ====================
 @bot.tree.command(name="mute", description="Silencia um membro no servidor temporariamente.")
