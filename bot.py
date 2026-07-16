@@ -84,6 +84,7 @@ class MeuBot(commands.Bot):
         self.mensagens_ignoradas = set()
         self.ultimos_banimentos = set() 
         self.ultimos_mutes = set()
+        self.midia_cache = {} # Cache temporário de mídias deletadas
 
     async def setup_hook(self):
         self.add_view(ViewGhoul())
@@ -515,34 +516,64 @@ async def on_message(message):
             await log_filtro_automod(message, "Palavrão/Xingamento Detectado", message.content)
             return 
 
-    # 3. Filtro de Imagens Proibidas (Filtro Inteligente Tolerante a Qualidade)
+    # Coleta URLs de mídias (Anexos + links de imagens na mensagem)
+    urls_imagens = []
     if message.attachments:
         for anexo in message.attachments:
             filename_lower = anexo.filename.lower()
-            # Validamos a extensão da imagem diretamente pelo nome do ficheiro para evitar falhas de CDN do Discord
             if any(filename_lower.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp", ".gif"]):
-                try:
-                    # Discord exige cabeçalho de navegador para descarregar mídias de forma confiável
-                    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
-                    response = requests.get(anexo.url, headers=headers, timeout=10)
-                    
-                    # Converte para RGB para garantir que imagens em paleta de cores ou transparentes sejam computadas sem erro
-                    img = Image.open(BytesIO(response.content)).convert('RGB')
-                    img_hash = imagehash.average_hash(img)
-                    
-                    for hash_bloqueado in IMAGENS_BLOQUEADAS:
-                        hash_alvo = imagehash.hex_to_hash(hash_bloqueado)
-                        # Com distância Hamming <= 8, o bot pega qualquer variação, corte leve ou mudança de tamanho da foto
-                        if img_hash - hash_alvo <= 8:
-                            bot.mensagens_ignoradas.add(message.id)
-                            try: await message.delete()
-                            except: pass
-                            
-                            # Executa banimento sem exceção
-                            await executar_banimento(message.guild, message.author, bot.user, "Envio de imagem proibida.", "Ban (Automático)", anexo.url)
-                            return
-                except Exception as e:
-                    print(f"[Aviso Automod] Não foi possível analisar imagem: {e}")
+                urls_imagens.append(anexo.url)
+    
+    links_no_texto = re.findall(r'(https?://\S+\.(?:png|jpg|jpeg|webp|gif)(?:\?\S+)?)', message.content)
+    urls_imagens.extend(links_no_texto)
+
+    # Pré-download das mídias para cache robusto (Anti-404 nos logs)
+    if urls_imagens:
+        attachments_data = []
+        for idx, url in enumerate(urls_imagens):
+            try:
+                headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+                response = requests.get(url, headers=headers, timeout=5)
+                if response.status_code == 200:
+                    nome_arquivo = f"media_{idx}.png"
+                    match = re.search(r'/([^/?#]+\.(?:png|jpg|jpeg|webp|gif))', url, re.IGNORECASE)
+                    if match:
+                        nome_arquivo = match.group(1)
+                    attachments_data.append((response.content, nome_arquivo))
+            except:
+                pass
+        if attachments_data:
+            bot.midia_cache[message.id] = attachments_data
+            if len(bot.midia_cache) > 300:
+                # Remove o mais antigo do cache para evitar vazamento de memória
+                bot.midia_cache.pop(next(iter(bot.midia_cache)))
+
+    # 3. Filtro de Imagens Proibidas (Filtro por Hash)
+    for url in urls_imagens:
+        try:
+            # Discord exige cabeçalho de navegador para descarregar mídias de forma confiável
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                # Converte para RGB para garantir que imagens em paleta de cores ou transparentes sejam computadas sem erro
+                img = Image.open(BytesIO(response.content)).convert('RGB')
+                img_avg_hash = imagehash.average_hash(img)
+                img_p_hash = imagehash.phash(img)
+                img_d_hash = imagehash.dhash(img)
+                
+                for hash_bloqueado in IMAGENS_BLOQUEADAS:
+                    hash_alvo = imagehash.hex_to_hash(hash_bloqueado)
+                    # Com distância Hamming <= 8 em qualquer algoritmo (Average, Perceptual ou Difference Hash)
+                    if (img_avg_hash - hash_alvo <= 8) or (img_p_hash - hash_alvo <= 8) or (img_d_hash - hash_alvo <= 8):
+                        bot.mensagens_ignoradas.add(message.id)
+                        try: await message.delete()
+                        except: pass
+                        
+                        # Executa banimento e envia prova
+                        await executar_banimento(message.guild, message.author, bot.user, "Envio de imagem proibida.", "Ban (Automático)", url)
+                        return
+        except Exception as e:
+            print(f"[Aviso Automod] Erro ao processar hash da imagem {url}: {e}")
 
     # 4. Filtro de Convites/Links Proibidos
     if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):
@@ -572,15 +603,23 @@ async def on_message_delete(message):
         conteudo = message.content[:1000] if message.content else "Mensagem vazia ou apenas mídia"
         embed.description = f"👤 **Usuário:** {message.author.mention} ({message.author.id})\n💬 **Canal:** {message.channel.mention}\n\n**Conteúdo Original:**\n```{conteudo}```"
         
-        # Mostra a imagem apagada diretamente no log de mensagem apagada!
-        if message.attachments:
-            for anexo in message.attachments:
-                if anexo.url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                    embed.set_image(url=anexo.url)
-                    break # Exibe o primeiro anexo de imagem encontrado no embed
+        # Faz o upload direto dos bytes guardados em cache para o canal de logs (Garante 100% que a mídia apareça)
+        arquivos_enviar = []
+        if message.id in bot.midia_cache:
+            for i, (dados_binarios, nome_arquivo) in enumerate(bot.midia_cache[message.id]):
+                file = discord.File(BytesIO(dados_binarios), filename=nome_arquivo)
+                arquivos_enviar.append(file)
+                # Configura a imagem do embed para usar o arquivo anexado
+                embed.set_image(url=f"attachment://{nome_arquivo}")
+                break # Mostra a primeira imagem anexada ampliada no embed
+            del bot.midia_cache[message.id] # Remove do cache
         
         embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=message.guild.icon.url if message.guild.icon else None)
-        await canal_logs.send(embed=embed)
+        
+        if arquivos_enviar:
+            await canal_logs.send(embed=embed, files=arquivos_enviar)
+        else:
+            await canal_logs.send(embed=embed)
 
 @bot.event
 async def on_message_edit(before, after):
