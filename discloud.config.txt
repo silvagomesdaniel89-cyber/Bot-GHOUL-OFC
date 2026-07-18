@@ -1,0 +1,7 @@
+MAIN=bot.py
+NAME=NomeDoSeuBot
+TYPE=bot
+RAM=100
+AUTORESTART=false
+VERSION=latest
+APT=tools
