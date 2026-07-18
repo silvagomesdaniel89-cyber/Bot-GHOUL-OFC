@@ -73,7 +73,7 @@ PALAVROES = [
 
 IMAGENS_BLOQUEADAS = [
     '9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 
-    'c48ff019712fe2c6', '91ac6db293ab09a6', 'c1e1eb965c5e5cd0'
+    'c48ff019712fe2c6', '91ac6db293ab09a6', 'c1e1eb965c5e5cd0', 'f5de4a08bdbd5aa5', '956a6e944ac9a6c9', '931e6ae394d3486f'
 ]
 
 # ==================== ESTRUTURA DO BOT ====================
