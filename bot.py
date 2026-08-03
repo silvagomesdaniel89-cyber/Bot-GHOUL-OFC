@@ -161,7 +161,7 @@ async def mute_slash(interaction: discord.Interaction, membro: discord.Member, m
     except Exception as e:
         await interaction.followup.send(f"❌ Não foi possível silenciar o membro: {e}", ephemeral=True)
 
-# ==================== LOGS DE VOZ E CARGOS (COM AUDIT LOG ROBUSTO) ====================
+# ==================== LOGS DE VOZ E CARGOS ====================
 @bot.event
 async def on_voice_state_update(member, before, after):
     config = obter_config(member.guild.id)
@@ -373,7 +373,6 @@ async def on_message(message):
     config = obter_config(message.guild.id)
     if not config: return
 
-    # Verificação Rigorosa de Imagens Proibidas
     if message.attachments:
         for attachment in message.attachments:
             if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp', '.gif']):
@@ -385,19 +384,16 @@ async def on_message(message):
                         
                         for hash_str in IMAGENS_BLOQUEADAS_HASHES:
                             h_bloq = imagehash.hex_to_hash(hash_str)
-                            # Tolerância estrita para garantir detecção exata ou por similaridade
                             if h_atual - h_bloq <= 6:
                                 bot.mensagens_ignoradas.add(message.id)
                                 try: await message.delete()
                                 except Exception as ex: print(f"Erro ao apagar img: {ex}")
                                 
-                                # Envia log visual imediato no canal de logs
                                 embed_log_img = discord.Embed(title=f"🚨 {config['nome']} - Imagem Proibida Bloqueada", color=0x950606, timestamp=discord.utils.utcnow())
                                 embed_log_img.description = f"👤 **Usuário:** {message.author.mention} (`{message.author.name}`)\n💬 **Canal:** {message.channel.mention}\n⚡ **Ação:** `Deletada e Banido Instantaneamente`"
                                 embed_log_img.set_image(url=attachment.url)
                                 await enviar_log(message.guild.id, embed_log_img)
 
-                                # Executa banimento automático e log no canal de punições
                                 await executar_banimento(message.guild, message.author, bot.user, "Envio de Imagem Proibida / Automod", "Ban Automático (Imagem Proibida)", attachment.url)
                                 return
                 except Exception as e:
@@ -425,7 +421,7 @@ async def on_message(message):
             await executar_banimento(message.guild, message.author, bot.user, f"Tentativa de golpe: `{termo}`", "Ban Automático")
             return
 
-# ==================== SORTEIOS ESTILO LORITTA (COMPLETO E IDÊNTICO) ====================
+# ==================== SORTEIOS ESTILO LORITTA ====================
 class SorteioParticiparView(discord.ui.View):
     def __init__(self, sorteio_id: str):
         super().__init__(timeout=None)
@@ -440,12 +436,10 @@ class SorteioParticiparView(discord.ui.View):
         dados = bot.sorteios_ativos[s_id]
         participantes = dados["participantes"]
         
-        # Validação de cargos bloqueados
         if dados.get("cargos_bloqueados"):
             if any(r.id in dados["cargos_bloqueados"] for r in interaction.user.roles):
                 return await interaction.response.send_message("❌ Você possui um cargo bloqueado e não pode participar deste sorteio!", ephemeral=True)
                 
-        # Validação de cargos permitidos
         if dados.get("cargos_permitidos"):
             if not any(r.id in dados["cargos_permitidos"] for r in interaction.user.roles):
                 return await interaction.response.send_message("❌ Você não possui os cargos necessários para participar deste sorteio!", ephemeral=True)
@@ -456,7 +450,6 @@ class SorteioParticiparView(discord.ui.View):
             await interaction.response.send_message("🚪 Você saiu do sorteio.", ephemeral=True)
         else:
             participantes.append(interaction.user.id)
-            # Entradas extras
             if interaction.user.id in dados.get("entradas_extras", {}):
                 extras = dados["entradas_extras"][interaction.user.id]
                 for _ in range(extras):
@@ -522,7 +515,7 @@ class ViewConfigCargosEntradas(discord.ui.View):
         if "entradas_extras_map" not in bot.configs_sorteio_temp[self.guild_id]:
             bot.configs_sorteio_temp[self.guild_id]["entradas_extras_map"] = {}
         
-        bot.configs_sorteio_temp[self.guild_id]["entradas_extras_map"][cargo.id] = 2 # Exemplo: 2 entradas extras
+        bot.configs_sorteio_temp[self.guild_id]["entradas_extras_map"][cargo.id] = 2
         await interaction.response.send_message(f"✅ Cargo {cargo.mention} configurado com entradas extras!", ephemeral=True)
 
 class ViewConfigCanalSorteio(discord.ui.View):
@@ -543,10 +536,12 @@ class SorteioSetupView(discord.ui.View):
         self.guild_id = guild_id
 
     @discord.ui.button(label="Geral", style=discord.ButtonStyle.primary, emoji="⚙️", custom_id="btn_s_geral")
-    fn_geral = lambda self, i, b: i.response.send_modal(ModalSorteioGeral(self.guild_id))
+    async def fn_geral(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ModalSorteioGeral(self.guild_id))
 
     @discord.ui.button(label="Aparência", style=discord.ButtonStyle.secondary, emoji="🎨", custom_id="btn_s_aparencia")
-    fn_aparencia = lambda self, i, b: i.response.send_modal(ModalSorteioAparencia(self.guild_id))
+    async def fn_aparencia(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ModalSorteioAparencia(self.guild_id))
 
     @discord.ui.button(label="Canal", style=discord.ButtonStyle.secondary, emoji="📢", custom_id="btn_s_canal")
     async def canal_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -584,8 +579,6 @@ class SorteioSetupView(discord.ui.View):
 
         msg = await canal_alvo.send(embed=embed, view=SorteioParticiparView(""))
         
-        entradas_extras_finais = {}
-        # Mapeia cargos para IDs de usuários participantes no momento da entrada ou checados dinamicamente
         bot.sorteios_ativos[str(msg.id)] = {
             "premio": premio,
             "vencedores": vencedores,
