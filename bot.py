@@ -192,96 +192,6 @@ async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=N
         print(f"[ERRO BAN] {membro.name}: {e}")  
         return False
 
-# 1. Filtro de Termos de Ban Direto
-    for termo in TERMOS_BAN:  
-        if termo in texto_junto:  
-            bot.mensagens_ignoradas.add(message.id)  
-            try: await message.delete()  
-            except: pass  
-            
-            # Mensagem no chat para o usuário puxando a orelha
-            try:
-                aviso_chat = await message.channel.send(f"{message.author.mention}, você não pode mandar link ou termo proibido aqui seu jumento! 🐴")
-                await asyncio.sleep(5)
-                await aviso_chat.delete()
-            except: pass
-
-            await enviar_log_gs(
-                message.guild, 
-                "Mensagem Apagada (Termo Proibido)", 
-                f"👤 **Autor:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n📝 **Texto:** ```{message.content[:800]}```",
-                color=0x950606
-            )
-            await executar_banimento(message.guild, message.author, bot.user, f"Divulgação/Mensagem Suspeita: `{termo}`", "Ban Automático (Texto)")  
-            return  
-
-    # 2. Filtro de Palavrões
-    for palavrao in PALAVROES:  
-        if palavrao in texto_junto:  
-            bot.mensagens_ignoradas.add(message.id)  
-            try: await message.delete()  
-            except: pass  
-            
-            # Mensagem no chat para o palavrão
-            try:
-                aviso_chat = await message.channel.send(f"{message.author.mention}, cuidado com seu linguajar seu boboca! 🫵")
-                await asyncio.sleep(5)
-                await aviso_chat.delete()
-            except: pass
-
-            await enviar_log_gs(
-                message.guild, 
-                "Mensagem Apagada (Palavrão)", 
-                f"👤 **Membro:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n📝 **Texto:** ```{message.content[:800]}```", 
-                color=0xe67e22
-            )  
-            return
-# ... [dentro do evento on_message] ...
-
-    # Verificação de Imagens Proibidas -> APAGA, LOGA E DEPOIS TENTA BANIR
-    for url in urls_imagens:  
-        try:  
-            headers = {"User-Agent": "Mozilla/5.0"}  
-            response = requests.get(url, headers=headers, timeout=5)  
-            if response.status_code == 200:  
-                img = Image.open(BytesIO(response.content)).convert('RGB')  
-                img_avg_hash = imagehash.average_hash(img)  
-                  
-                for hash_bloqueado in IMAGENS_BLOQUEADAS:  
-                    hash_alvo = imagehash.hex_to_hash(hash_bloqueado)  
-                    
-                    if (img_avg_hash - hash_alvo <= 8):  
-                        # 1. APAGA A MENSAGEM PRIMEIRO (Não importa o cargo)
-                        bot.mensagens_ignoradas.add(message.id)  
-                        try: 
-                            await message.delete()  
-                        except discord.Forbidden: 
-                            pass # Bot sem permissão de apagar mensagens no canal
-                        
-                        # 2. GERA O LOG DE DELEÇÃO IMEDIATAMENTE
-                        await enviar_log_gs(
-                            message.guild, 
-                            "⚠️ Imagem Proibida Deletada", 
-                            f"👤 **Autor:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n✅ **Ação:** A imagem foi apagada com sucesso, mesmo que a punição falhe.", 
-                            color=0x950606, 
-                            imagem=url
-                        )
-                        
-                        # 3. TENTA EXECUTAR O BANIMENTO
-                        # Se o membro tiver cargo maior, a função 'executar_banimento' vai falhar
-                        # e enviar um log de erro de hierarquia, mas a imagem já foi apagada acima!
-                        await executar_banimento(
-                            message.guild, 
-                            message.author, 
-                            bot.user, 
-                            "Envio de Imagem Proibida/Golpe/NSFW", 
-                            "Ban Automático", 
-                            url
-                        )  
-                        return  
-        except Exception as e:
-            print(f"[ERRO HASH IMAGEM]: {e}")
-
 # ==================== SISTEMA DE LOGS ESTILO GAMERSAFER / GS ====================
 
 @bot.event
@@ -568,6 +478,20 @@ async def on_message(message):
             bot.mensagens_ignoradas.add(message.id)  
             try: await message.delete()  
             except: pass  
+            
+            # Mensagem no chat para o usuário puxando a orelha
+            try:
+                aviso_chat = await message.channel.send(f"{message.author.mention}, você não pode mandar link ou termo proibido aqui seu jumento! 🐴")
+                await asyncio.sleep(5)
+                await aviso_chat.delete()
+            except: pass
+
+            await enviar_log_gs(
+                message.guild, 
+                "Mensagem Apagada (Termo Proibido)", 
+                f"👤 **Autor:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n📝 **Texto:** ```{message.content[:800]}```",
+                color=0x950606
+            )
             await executar_banimento(message.guild, message.author, bot.user, f"Divulgação/Mensagem Suspeita: `{termo}`", "Ban Automático (Texto)")  
             return  
 
@@ -577,10 +501,18 @@ async def on_message(message):
             bot.mensagens_ignoradas.add(message.id)  
             try: await message.delete()  
             except: pass  
+            
+            # Mensagem no chat para o palavrão
+            try:
+                aviso_chat = await message.channel.send(f"{message.author.mention}, cuidado com seu linguajar seu boboca! 🫵")
+                await asyncio.sleep(5)
+                await aviso_chat.delete()
+            except: pass
+
             await enviar_log_gs(
                 message.guild, 
-                "Palavrão Detectado", 
-                f"👤 **Membro:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n📝 **Texto:** ```{message.content}```", 
+                "Mensagem Apagada (Palavrão)", 
+                f"👤 **Membro:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n📝 **Texto:** ```{message.content[:800]}```", 
                 color=0xe67e22
             )  
             return   
@@ -612,26 +544,47 @@ async def on_message(message):
             bot.midia_cache[message.id] = attachments_data  
             if len(bot.midia_cache) > 300: bot.midia_cache.pop(next(iter(bot.midia_cache)))  
 
-    # Verificação de Imagens Proibidas -> BAN AUTOMÁTICO
+    # Verificação de Imagens Proibidas -> APAGA, LOGA E DEPOIS TENTA BANIR
     for url in urls_imagens:  
         try:  
             headers = {"User-Agent": "Mozilla/5.0"}  
-            response = requests.get(url, headers=headers, timeout=10)  
+            response = requests.get(url, headers=headers, timeout=5)  
             if response.status_code == 200:  
                 img = Image.open(BytesIO(response.content)).convert('RGB')  
                 img_avg_hash = imagehash.average_hash(img)  
                   
                 for hash_bloqueado in IMAGENS_BLOQUEADAS:  
                     hash_alvo = imagehash.hex_to_hash(hash_bloqueado)  
+                    
                     if (img_avg_hash - hash_alvo <= 8):  
+                        # 1. APAGA A MENSAGEM PRIMEIRO (Não importa o cargo)
                         bot.mensagens_ignoradas.add(message.id)  
-                        try: await message.delete()  
-                        except: pass  
-                        # BANIMENTO IMEDIATO AO DETECTAR IMAGEM PROIBIDA
-                        await executar_banimento(message.guild, message.author, bot.user, "Envio de Imagem Proibida/NSFW/Ofensiva", "Ban Automático (Imagem Proibida)", url)  
+                        try: 
+                            await message.delete()  
+                        except discord.Forbidden: 
+                            pass # Bot sem permissão de apagar mensagens no canal
+                        
+                        # 2. GERA O LOG DE DELEÇÃO IMEDIATAMENTE
+                        await enviar_log_gs(
+                            message.guild, 
+                            "⚠️ Imagem Proibida Deletada", 
+                            f"👤 **Autor:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n✅ **Ação:** A imagem foi apagada com sucesso, mesmo que a punição falhe.", 
+                            color=0x950606, 
+                            imagem=url
+                        )
+                        
+                        # 3. TENTA EXECUTAR O BANIMENTO
+                        await executar_banimento(
+                            message.guild, 
+                            message.author, 
+                            bot.user, 
+                            "Envio de Imagem Proibida/Golpe/NSFW", 
+                            "Ban Automático", 
+                            url
+                        )  
                         return  
         except Exception as e:
-            print(f"[ERRO PROCESSANDO HASH IMAGEM]: {e}")
+            print(f"[ERRO HASH IMAGEM]: {e}")
 
     # 4. Anti-Invite
     if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):  
