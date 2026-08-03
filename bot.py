@@ -586,6 +586,6 @@ async def painel_slash(interaction: discord.Interaction, painel: app_commands.Ch
 @bot.event
 async def on_ready():
     print(f"✅ Sistema perfeito! {bot.user.name} está online.")
-    
-    TOKEN = os.getenv('TOKEN')
+
+TOKEN = os.getenv('TOKEN_BOT')
 bot.run(TOKEN)
