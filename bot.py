@@ -14,7 +14,7 @@ from io import BytesIO
 from flask import Flask
 from threading import Thread
 
-==================== SERVIDOR WEB PARA MANTER ONLINE ====================
+# ==================== SERVIDOR WEB PARA MANTER ONLINE ====================
 
 app = Flask(__name__)
 @app.route('/')
@@ -27,7 +27,7 @@ def run_server():
 
 Thread(target=run_server, daemon=True).start()
 
-==================== CONFIGURAÇÕES DOS SERVIDORES ====================
+# ==================== CONFIGURAÇÕES DOS SERVIDORES ====================
 
 CONFIG_SERVIDORES = {
     1143627184842493992: {
@@ -87,7 +87,7 @@ IMAGENS_BLOQUEADAS = [
     'c48ff019712fe2c6', '91ac6db293ab09a6', 'c1e1eb965c5e5cd0', 'f5de4a08bdbd5aa5', '956a6e944ac9a6c9', '931e6ae394d3486f'
 ]
 
-==================== ESTRUTURA DO BOT ====================
+# ==================== ESTRUTURA DO BOT ====================
 
 class MeuBot(commands.Bot):
     def __init__(self):
@@ -104,6 +104,7 @@ class MeuBot(commands.Bot):
         self.add_view(ViewKings())  
         self.add_view(ViewNightware())  
         self.add_view(ViewBellazzz())  
+        self.add_view(ViewPolias())
         self.add_view(ViewValidar())  
         self.add_view(ViewControleTicket())  
         await self.tree.sync()
@@ -128,7 +129,7 @@ def is_staff(user: discord.Member, guild: discord.Guild) -> bool:
     cargo_id = config.get("cargo_staff")
     return any(role.id == cargo_id for role in user.roles)
 
-==================== SISTEMA DE PUNIÇÕES E LOGS ====================
+# ==================== SISTEMA DE PUNIÇÕES E LOGS ====================
 
 async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     config = obter_config(guild.id)
@@ -196,7 +197,7 @@ async def log_filtro_automod(message, ocorrencia, texto_original):
     embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=message.guild.icon.url if message.guild.icon else None)  
     await canal.send(embed=embed)
 
-==================== EVENTOS DE LOGS COMPLETOS (CARGOS E VOZ) ====================
+# ==================== EVENTOS DE LOGS COMPLETOS (CARGOS E VOZ) ====================
 
 @bot.event
 async def on_member_update(before, after):
@@ -251,13 +252,11 @@ async def on_voice_state_update(member, before, after):
     if member.display_avatar:
         embed.set_thumbnail(url=member.display_avatar.url)
 
-    # Entrou em canal de voz ou palco
     if before.channel is None and after.channel is not None:
         embed.title = f"🔊 {config['nome']} - Entrou na Call"
         embed.description = f"👤 **Membro:** {member.mention} (`{member.name}`)\n📢 **Canal:** {after.channel.mention}"
         await canal.send(embed=embed)
 
-    # Saiu de canal de voz ou palco (ou foi desconectado)
     elif before.channel is not None and after.channel is None:
         executor = None
         try:
@@ -276,13 +275,12 @@ async def on_voice_state_update(member, before, after):
             embed.description = f"👤 **Membro:** {member.mention} (`{member.name}`)\n📢 **Canal:** {before.channel.mention}"
         await canal.send(embed=embed)
 
-    # Moveu de canal
     elif before.channel != after.channel and before.channel is not None and after.channel is not None:
         embed.title = f"🔄 {config['nome']} - Moveu de Call"
         embed.description = f"👤 **Membro:** {member.mention} (`{member.name}`)\n📤 **De:** {before.channel.mention}\n📥 **Para:** {after.channel.mention}"
         await canal.send(embed=embed)
 
-==================== CONTROLE AVANÇADO DE TICKETS ====================
+# ==================== CONTROLE AVANÇADO DE TICKETS ====================
 
 class ViewControleTicket(discord.ui.View):
     def __init__(self):
@@ -377,7 +375,7 @@ async def criar_canal_ticket(interaction: discord.Interaction, setor: str, mensa
     await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewControleTicket())  
     await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
 
-==================== TICKETS FIXOS ====================
+# ==================== TICKETS FIXOS ====================
 
 class DropdownGhoul(discord.ui.Select):
     def __init__(self):
@@ -425,6 +423,16 @@ class DropdownBellazzz(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         await criar_canal_ticket(interaction, self.values[0], "Olá! Detalhe abaixo o que você precisa em relação às parcerias ou suporte da loja.")
 
+class DropdownPolias(discord.ui.Select):
+    def __init__(self):
+        opcoes = [
+            discord.SelectOption(label="Parcerias", value="parcerias", emoji="🤝"),
+            discord.SelectOption(label="Suporte / Dúvidas", value="suporte", emoji="🛠️")
+        ]
+        super().__init__(placeholder="Selecione o tipo de atendimento...", min_values=1, max_values=1, options=opcoes, custom_id="sel_polias")
+    async def callback(self, interaction: discord.Interaction):
+        await criar_canal_ticket(interaction, self.values[0], "Olá! Caso queira parceria ou suporte, detalhe abaixo o que você precisa para que nossa equipe possa te ajudar.")
+
 class ViewGhoul(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -445,6 +453,11 @@ class ViewBellazzz(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(DropdownBellazzz())
 
+class ViewPolias(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(DropdownPolias())
+
 class ViewValidar(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -452,7 +465,7 @@ class ViewValidar(discord.ui.View):
     async def validar(self, interaction: discord.Interaction, button: discord.ui.Button):
         await criar_canal_ticket(interaction, "coldawn")
 
-==================== AUTOMODERAÇÃO ====================
+# ==================== AUTOMODERAÇÃO ====================
 
 @bot.event
 async def on_message(message):
@@ -564,7 +577,7 @@ async def on_message_delete(message):
         else:  
             await canal_logs.send(embed=embed)
 
-==================== SISTEMA DE SORTEIO ESTILO LORITTA ====================
+# ==================== SISTEMA DE SORTEIO ESTILO LORITTA ====================
 
 class ModalSorteio(discord.ui.Modal, title="Configurar Sorteio"):
     premio = discord.ui.TextInput(label="Prêmio (Ex: Permanent Kitsune)", required=True)
@@ -643,7 +656,7 @@ async def finalizar_sorteio(canal, msg_id, premio, num_ganhadores, delay, dict_m
     except Exception as e:  
         print(f"Erro ao finalizar sorteio: {e}")
 
-==================== COMANDOS DE BARRA ====================
+# ==================== COMANDOS DE BARRA ====================
 
 @bot.tree.command(name="criar_painel", description="Abre o formulário para criar um painel dinâmico.")
 @app_commands.default_permissions(administrator=True)
@@ -655,12 +668,13 @@ async def criar_painel_slash(interaction: discord.Interaction):
 async def sorteio_slash(interaction: discord.Interaction):
     await interaction.response.send_modal(ModalSorteio())
 
-@bot.tree.command(name="painel_antigo", description="Envia os painéis fixos antigos e da nova loja.")
+@bot.tree.command(name="painel_antigo", description="Envia os painéis fixos antigos e da loja.")
 @app_commands.choices(painel=[
     app_commands.Choice(name="GHOUL", value="ghoul"),
     app_commands.Choice(name="BLOX KINGS", value="kings"),
     app_commands.Choice(name="NIGHTWARE", value="nightware"),
     app_commands.Choice(name="BELLAZZZ", value="bellazzz"),
+    app_commands.Choice(name="POLIAS", value="polias"),
     app_commands.Choice(name="COD", value="cod")
 ])
 @app_commands.default_permissions(administrator=True)
@@ -681,6 +695,10 @@ async def painel_slash(interaction: discord.Interaction, painel: app_commands.Ch
         embed = discord.Embed(title="🏪 CENTRAL DE ATENDIMENTO - BELLAZZZ STORE", description="Como podemos te ajudar na loja? Selecione abaixo.", color=0x950606)
         embed.set_image(url=IMAGENS_TICKETS.get("BELLAZZZ"))
         view = ViewBellazzz()
+    elif painel.value == "polias":
+        embed = discord.Embed(title="🛡️ CENTRAL DE ATENDIMENTO - POLIAS", description="Caso queira parceria ou suporte, selecione abaixo.", color=0x950606)
+        embed.set_image(url=IMAGENS_TICKETS.get("POLIAS"))
+        view = ViewPolias()
     elif painel.value == "cod":
         embed = discord.Embed(title="TICKET DE COLDAWN", description="Informamos que...", color=0x950606)
         embed.set_image(url=IMAGENS_TICKETS["COD"])
