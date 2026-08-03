@@ -50,12 +50,12 @@ CONFIG_SERVIDORES = {
         "cargo_staff": 1333982207701684294
     },
     # NOVO SERVIDOR ADICIONADO
-    123456789012345678: {
-        "nome": "BELLAZZZ STORE", 
-        "canal_logs": 0, 
-        "canal_punicoes": 0, 
-        "categoria_tickets": 0, 
-        "cargo_staff": 0
+    1489007277267620013: {
+        "nome": "POLIAS", 
+        "canal_logs": 1489007278693814453, 
+        "canal_punicoes": 1533828688213311608, 
+        "categoria_tickets": 1533834644569456681, 
+        "cargo_staff": 1489007277267620020
     }
 }
 
@@ -63,7 +63,8 @@ IMAGENS_TICKETS = {
     "GHOUL": "https://cdn.discordapp.com/attachments/1444429504838631586/1454170002746769530/Banner_ticket_20250205_120340_0000.png",
     "COD": "https://cdn.discordapp.com/attachments/1183819407013707947/1469731813709578417/GHOUL_20260207_132912_0000.png",
     "BLOX_KINGS": "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png",
-    "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif"
+    "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif",
+    "POLIAS": "https://cdn.discordapp.com/attachments/1431364353482948608/1533832231108214864/file_000000004fd4820eb39bb046269d5d96.png?ex=6a71ec15&is=6a709a95&hm=ef81b6bd0f737f70605dcb5f3814926b699c8a091209c990f48bbe2fa1e70c3d"
 }
 
 TERMOS_BAN = [
