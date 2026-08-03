@@ -49,7 +49,6 @@ CONFIG_SERVIDORES = {
         "categoria_tickets": 1331327159448375356, 
         "cargo_staff": 1333982207701684294
     },
-    # NOVO SERVIDOR ADICIONADO
     1489007277267620013: {
         "nome": "POLIAS", 
         "canal_logs": 1489007278693814453, 
@@ -63,8 +62,7 @@ IMAGENS_TICKETS = {
     "GHOUL": "https://cdn.discordapp.com/attachments/1444429504838631586/1454170002746769530/Banner_ticket_20250205_120340_0000.png",
     "COD": "https://cdn.discordapp.com/attachments/1183819407013707947/1469731813709578417/GHOUL_20260207_132912_0000.png",
     "BLOX_KINGS": "https://cdn.discordapp.com/attachments/1183819407013707947/1526281157635870730/file_000000002958720eab459d97fd2c5b8e.png",
-    "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif",
-    "POLIAS": "https://cdn.discordapp.com/attachments/1431364353482948608/1533832231108214864/file_000000004fd4820eb39bb046269d5d96.png?ex=6a71ec15&is=6a709a95&hm=ef81b6bd0f737f70605dcb5f3814926b699c8a091209c990f48bbe2fa1e70c3d"
+    "NIGHTWARE": "https://cdn.discordapp.com/attachments/1440377531848200295/1452759780111155323/standard.gif"
 }
 
 TERMOS_BAN = [
@@ -118,7 +116,6 @@ def normalizar_texto(texto):
     return re.sub(r'[^a-z0-9\s]', '', texto)
 
 def converter_tempo(tempo_str):
-    """Converte strings como 10m, 1h, 2d para segundos."""
     match = re.match(r"^(\d+)([mhd])$", tempo_str.lower().strip())
     if not match:
         return None
@@ -142,7 +139,6 @@ async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     if hasattr(user, 'display_avatar') and user.display_avatar: 
         embed.set_thumbnail(url=user.display_avatar.url)
     
-    # Formatação sem quebra de menção mobile
     description = (
         f"👤 **Usuário:** {user.mention} (`{user.name}`)\n"
         f"🆔 **ID:** `{user.id}`\n"
@@ -183,7 +179,7 @@ async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=N
         print(f"[ERRO PERMISSÃO] Não foi possível banir o usuário {membro.name} ({membro.id}). Detalhe: {e}")
         return False
 
-# ==================== EVLOGS COMPLETO DO GS (GAMERSAFER) ====================
+# ==================== EVLOGS COMPLETO DO GS ====================
 @bot.event
 async def on_guild_channel_create(channel):
     config = obter_config(channel.guild.id)
@@ -244,7 +240,6 @@ async def on_guild_emojis_update(guild, before, after):
             embed.description = f"❌ **Emoji:** `{removido.name}`\n🆔 **ID:** `{removido.id}`"
             await canal_logs.send(embed=embed)
 
-# CORREÇÃO DO ERRO "VOCÊ NÃO TEM ACESSO A ESTE LINK" (AVATAR/PERFIL LOGS)
 @bot.event
 async def on_user_update(before, after):
     for guild in bot.guilds:
@@ -255,7 +250,6 @@ async def on_user_update(before, after):
         canal_logs = bot.get_channel(config["canal_logs"])
         if not canal_logs: continue
 
-        # Avatar Global - Formatado sem dar bug de "sem acesso" no Discord mobile
         if before.avatar != after.avatar:
             embed = discord.Embed(
                 title=f"🖼️ {config['nome']} - Alteração de Avatar", 
@@ -266,7 +260,6 @@ async def on_user_update(before, after):
             avatar_antigo_url = before.avatar.url if before.avatar else before.default_avatar.url
             avatar_novo_url = after.avatar.url if after.avatar else after.default_avatar.url
 
-            # Substituído a menção crua por texto formatado limpo
             embed.description = (
                 f"👤 **Membro:** **{after.display_name}** (`@{after.name}`)\n"
                 f"🆔 **ID:** `{after.id}`\n\n"
@@ -279,7 +272,7 @@ async def on_user_update(before, after):
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
             await canal_logs.send(embed=embed)
 
-# ==================== SISTEMA DE TICKETS COM NOVAS OPÇÕES ====================
+# ==================== SISTEMA DE TICKETS ====================
 class DropdownGhoul(discord.ui.Select):
     def __init__(self):
         opcoes = [
@@ -287,7 +280,7 @@ class DropdownGhoul(discord.ui.Select):
             discord.SelectOption(label="Suporte", value="suporte", description="Recorra a uma punição (warn/mute).", emoji="🛠️"), 
             discord.SelectOption(label="Dúvidas", value="duvidas", description="Tire dúvidas sobre a comunidade ou regras.", emoji="❓"),
             discord.SelectOption(label="Exposed", value="exposed", description="Falar sobre membro expondo outro.", emoji="⚠️"),
-            discord.SelectOption(label="Parcerias", value="parcerias", description="Fazer parcerias com o servidor.", emoji="🤝") # NOVO TICKET
+            discord.SelectOption(label="Parcerias", value="parcerias", description="Fazer parcerias com o servidor.", emoji="🤝")
         ]
         super().__init__(placeholder="Selecione o setor do suporte...", min_values=1, max_values=1, options=opcoes, custom_id="sel_ghoul")
     async def callback(self, interaction: discord.Interaction): 
@@ -301,7 +294,7 @@ class DropdownKings(discord.ui.Select):
             discord.SelectOption(label="Frutas Perm", value="frutas_perm", description="Comprar Frutas Permanentes", emoji="🍊"),
             discord.SelectOption(label="Frutas Físicas", value="frutas_fisicas", description="Comprar Frutas Físicas (Inventário)", emoji="🍎"),
             discord.SelectOption(label="Contas GHM/Fruta", value="contas", description="Geral, Fruta Inv ou Contas Random", emoji="💸"),
-            discord.SelectOption(label="Resgate", value="resgate", description="Resgatar compras ou prêmios.", emoji="🎁") # NOVO TICKET
+            discord.SelectOption(label="Resgate", value="resgate", description="Resgatar compras ou prêmios.", emoji="🎁")
         ]
         super().__init__(placeholder="Selecione a categoria correta no menu abaixo...", min_values=1, max_values=1, options=opcoes, custom_id="sel_kings")
     async def callback(self, interaction: discord.Interaction): 
@@ -378,7 +371,7 @@ async def criar_canal_ticket(interaction: discord.Interaction, setor: str):
     await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewFechar())
     await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
 
-# ==================== SISTEMA DE SORTEIO ESTILO LORITTA ====================
+# ==================== SISTEMA DE SORTEIO ====================
 class SorteioView(discord.ui.View):
     def __init__(self, premio, tempo_segs, quantidade_vencedores):
         super().__init__(timeout=tempo_segs)
@@ -426,7 +419,6 @@ class ModalSorteio(discord.ui.Modal, title="🎉 Criar Novo Sorteio"):
 
         await asyncio.sleep(tempo_segs)
 
-        # Finalizar sorteio
         if not view.participantes:
             await interaction.channel.send(f"❌ O sorteio de **{self.nome_sorteio.value}** foi encerrado, mas ninguém participou.")
             return
@@ -442,21 +434,28 @@ class ModalSorteio(discord.ui.Modal, title="🎉 Criar Novo Sorteio"):
         await msg.edit(embed=embed_fim, view=None)
         await interaction.channel.send(f"🎉 Parabéns {mencoes}! Vocês venceram o sorteio de **{self.nome_sorteio.value}**!")
 
-# ==================== COMANDOS DE BARRA ATUALIZADOS ====================
+# ==================== COMANDOS DE BARRA ====================
 @bot.tree.command(name="sorteio", description="Cria um novo sorteio estilo Loritta no canal.")
 @app_commands.default_permissions(administrator=True)
 async def sorteio_slash(interaction: discord.Interaction):
     await interaction.response.send_modal(ModalSorteio())
 
-@bot.tree.command(name="close", description="Fecha o canal de ticket atual imediatamente.")
-@app_commands.command(name="fechar", description="Fecha o canal de ticket atual imediatamente.")
-async def fechar_slash(interaction: discord.Interaction):
+# LÓGICA DO FECHAMENTO DE TICKET
+async def processar_fechamento_ticket(interaction: discord.Interaction):
     if "ticket-" not in interaction.channel.name:
         await interaction.response.send_message("❌ Este comando só pode ser usado dentro de um ticket!", ephemeral=True)
         return
     await interaction.response.send_message("🔒 Fechando ticket em 3 segundos...")
     await asyncio.sleep(3)
     await interaction.channel.delete()
+
+@bot.tree.command(name="close", description="Fecha o canal de ticket atual imediatamente.")
+async def close_slash(interaction: discord.Interaction):
+    await processar_fechamento_ticket(interaction)
+
+@bot.tree.command(name="fechar", description="Fecha o canal de ticket atual imediatamente.")
+async def fechar_slash(interaction: discord.Interaction):
+    await processar_fechamento_ticket(interaction)
 
 class ModalCriarTicketNaHora(discord.ui.Modal, title="🎫 Criar Painel de Ticket"):
     titulo = discord.ui.TextInput(label="Título do Embed", placeholder="Ex: CENTRAL DE ATENDIMENTO")
