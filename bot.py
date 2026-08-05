@@ -43,7 +43,47 @@ IMAGENS_TICKETS = {
     "POLIAS": "https://cdn.discordapp.com/attachments/1431364353482948608/1533832231108214864/file_000000004fd4820eb39bb046269d5d96.png",
 }
 
+# TERMOS E PALAVRÕES BLOQUEADOS NO CHAT
+TERMOS_BAN = TERMOS_BAN = [
+    # --- Ofensas e Palavrões Comuns ---
+    "puta", "putaria", "putassa", "putinha",
+    "caralho", "cralho", "krl", "krg",
+    "porra", "poha", "prra", "porrinh@",
+    "fdp", "filho da puta", "filha da puta", "fdps",
+    "pqp", "puta que pariu",
+    "merda", "mrd",
+    "desgraça", "desgraçado", "desgraçada", "dgrç",
+    "cacete", "kct", "kcte",
+    "arrombado", "arrombada", "arrombad@",
+    "corno", "corna", "corninho",
+    "otário", "otaria", "otario", "otária",
+    "idiota", "idiotas",
+    "imbecil", "imbecis",
+    "babaca", "babacas",
+    "lazarento", "lazarenta",
+    "vagabundo", "vagabunda", "vgbd",
+    "desgraça", "desgraçado",
+    "chupa", "chupando", "chupador",
+    "toma no cu", "tnc", "vai tomar no cu", "vtnc",
+    "vsf", "vai se foder", "vai se fude", "se fodeu", "foder", "fodido", "fodida",
+    "bosta", "bostil",
+    "cu", "cusao", "cusão", "cuzão", "cuzinho",
+    "buceta", "boceta", "punheta", "boquete", "kralho",
+
+    # --- Preconceito / Slurs Pesados (essenciais para moderação) ---
+    "viado", "viadinho", "bicha", "boiola", "sapatão", "sapatona",
+
+    # --- Golpes, Phishing, Scams e Spam Comuns no Discord ---
+    "discord.gg/", "discord.com/invite", "discordapp.com/invite",
+    "checkmybio", "check my bio",
+    "freenitro", "nitrogratis", "free nitro", "nitro free", "nitro de graça",
+    "steamgift", "steam nitro", "gift nitro", "nitro gift",
+    "ganhe nitro", "ganhe dinheiro rapido", "crypto gratis", "bitcoin gratis",
+    "robux gratis", "free robux", "robux grátis",
+    "hack de robux", "script blox fruits gratis", "painel ff gratis"
+]
 IMAGENS_BLOQUEADAS = ["9977339a644d9a62", "936c6c4e946cd966", "9748a8dcbd4a2579", "c48ff019712fe2c6"]
+
 COR_EMBED = 0x2b2d31
 COR_PUNICAO = 0xff3b3b
 COR_LOG = 0xa3a3a3
@@ -59,11 +99,6 @@ class MeuBot(commands.Bot):
     async def setup_hook(self):
         self.add_view(TicketView())
         await self.tree.sync()
-        
-    async def on_command_error(self, ctx, error):
-        # Evita que o bot quebre no console por erros bobos de permissão
-        if isinstance(error, commands.MissingPermissions):
-            pass
 
 bot = MeuBot()
 def obter_config(guild_id): return CONFIG_SERVIDORES.get(guild_id)
@@ -73,7 +108,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("❌ Você não tem permissão para usar isso.", ephemeral=True)
     else:
-        print(f"Erro no comando ignorado para não crachar: {error}")
+        print(f"Erro ignorado para evitar crash: {error}")
 
 async def enviar_log(guild, title, description, user=None, color=COR_LOG):
     config = obter_config(guild.id)
@@ -96,14 +131,14 @@ async def log_punicao(guild, user, staff, acao, motivo, anexos=None):
     embed.add_field(name="Motivo", value=f"```{motivo}```", inline=False)
     await canal.send(embed=embed, files=anexos) if anexos else await canal.send(embed=embed)
 
-# ==================== AUTOMOD DE IMAGEM & SPAM ====================
+# ==================== AUTOMOD TOTAL (IMAGENS, PALAVRÕES E SPAM) ====================
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: return
     config = obter_config(message.guild.id)
     if not config: return
 
-    # BLOQUEIO DE IMAGENS (Deleta e Bane Simultaneamente)
+    # 1. BLOQUEIO DE IMAGENS PROIBIDAS (Deleta e Bane Simultaneamente)
     if message.attachments:
         for anexo in message.attachments:
             if any(anexo.filename.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp"]):
@@ -123,13 +158,26 @@ async def on_message(message):
                                 file_prova = discord.File(BytesIO(bytes_img), filename="SPOILER_prova_ilegal.png")
                                 await log_punicao(message.guild, message.author, bot.user, "Ban Automático (Imagem Hash)", "Envio de mídia proibida.", anexos=[file_prova])
                             except discord.Forbidden:
-                                await log_punicao(message.guild, message.author, bot.user, "Falha ao Banir", "Imagem proibida detectada, mas o bot não tem permissão de banir este usuário.")
+                                await log_punicao(message.guild, message.author, bot.user, "Falha ao Banir", "Imagem proibida detectada, mas faltam permissões.")
                             return
                 except: pass
 
     if message.author.guild_permissions.administrator: return
 
-    # ANTI-SPAM (8 Segundos)
+    # 2. FILTRO DE PALAVRÕES E TERMOS PROIBIDOS
+    conteudo_lower = message.content.lower()
+    if any(termo in conteudo_lower for termo in TERMOS_BAN):
+        bot.mensagens_ignoradas.add(message.id)
+        try:
+            await message.delete()
+            msg_aviso = await message.channel.send(f"⚠️ {message.author.mention}, cuidado com seu linguajar, seu boboca!")
+            await asyncio.sleep(5)
+            await msg_aviso.delete()
+        except: pass
+        await enviar_log(message.guild, "🛡️ Auto Moderação - Palavrão", f"👤 {message.author.mention} usou um termo proibido em {message.channel.mention}.\n💬 ```{message.content}```", message.author, 0xffa500)
+        return
+
+    # 3. ANTI-SPAM (8 Segundos)
     agora = time.time()
     bot.spam_control.setdefault(message.author.id, [])
     mensagens_recentes = [t for t in bot.spam_control[message.author.id] if agora - t < 8]
@@ -143,10 +191,10 @@ async def on_message(message):
         bot.spam_control[message.author.id] = []
         try:
             await message.author.timeout(datetime.timedelta(minutes=15), reason="AutoMod: Flood")
-            await enviar_log(message.guild, "🛡️ Auto Moderação - Spam", f"{message.author.mention} silenciado por 15m (Limite 8s).", message.author, 0xffa500)
+            await enviar_log(message.guild, "🛡️ Auto Moderação - Spam", f"{message.author.mention} silenciado por 15m (Flood).", message.author, 0xffa500)
         except: pass
 
-# ==================== O MEGA SISTEMA DE LOGS ====================
+# ==================== O MEGA SISTEMA DE LOGS (23 CATEGORIAS) ====================
 @bot.event
 async def on_audit_log_entry_create(entry: discord.AuditLogEntry):
     if entry.user.id == bot.user.id: return
@@ -214,7 +262,7 @@ class TicketSelect(discord.ui.Select):
         res = cursor.fetchone()
         
         if res and guild.get_channel(res[0]):
-            return await interaction.response.send_message(f"❌ Você já possui um ticket: <#{res[0]}>.", ephemeral=True)
+            return await interaction.response.send_message(f"❌ Você já possui um ticket aberto: <#{res[0]}>.", ephemeral=True)
         
         await interaction.response.defer(ephemeral=True)
         cat = guild.get_channel(obter_config(guild.id)["categoria_tickets"])
@@ -232,7 +280,7 @@ class TicketSelect(discord.ui.Select):
         cursor.execute("INSERT INTO tickets (user_id, channel_id) VALUES (?, ?)", (user.id, canal.id))
         db.commit()
 
-        embed = discord.Embed(title="Atendimento", description=f"{user.mention}, use `/close` ou o botão para fechar.", color=COR_EMBED)
+        embed = discord.Embed(title="Atendimento", description=f"{user.mention}, use `/close` ou o botão abaixo para fechar.", color=COR_EMBED)
         view = discord.ui.View()
         btn = discord.ui.Button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒")
         async def close_cb(i): await fechar_ticket(i, canal)
@@ -240,7 +288,7 @@ class TicketSelect(discord.ui.Select):
         view.add_item(btn)
 
         await canal.send(content=f"{staff.mention if staff else ''}", embed=embed, view=view)
-        await interaction.followup.send(f"✅ Ticket criado: {canal.mention}", ephemeral=True)
+        await interaction.followup.send(f"✅ Ticket criado com sucesso: {canal.mention}", ephemeral=True)
 
 class TicketView(discord.ui.View):
     def __init__(self):
@@ -252,7 +300,7 @@ class TicketView(discord.ui.View):
 async def painel_tickets(interaction: discord.Interaction):
     cfg = obter_config(interaction.guild.id)
     url = IMAGENS_TICKETS[next((k for k in IMAGENS_TICKETS if k in cfg["nome"]), "GHOUL")]
-    emb = discord.Embed(title="🎫 Central de Atendimento", description="Selecione abaixo para abrir seu ticket.", color=COR_EMBED)
+    emb = discord.Embed(title="🎫 Central de Atendimento", description="Selecione abaixo o setor desejado para abrir seu ticket.", color=COR_EMBED)
     emb.set_image(url=url)
     await interaction.channel.send(embed=emb, view=TicketView())
     await interaction.response.send_message("Painel enviado!", ephemeral=True)
@@ -269,7 +317,7 @@ async def fechar_ticket(interaction, channel):
 async def cmd_close(interaction: discord.Interaction):
     cursor.execute("SELECT user_id FROM tickets WHERE channel_id = ?", (interaction.channel.id,))
     if not cursor.fetchone() and not interaction.channel.name.startswith("ticket-"):
-        return await interaction.response.send_message("❌ Apenas dentro de tickets.", ephemeral=True)
+        return await interaction.response.send_message("❌ Este comando só pode ser usado dentro de um ticket.", ephemeral=True)
     await fechar_ticket(interaction, interaction.channel)
 
 # ==================== SORTEIO INTERATIVO & REROLL ====================
@@ -314,7 +362,7 @@ class CargoExtraSelect(discord.ui.RoleSelect):
 class LorittaGiveawayView(discord.ui.View):
     def __init__(self, interaction_original):
         super().__init__(timeout=300)
-        self.dados = {"titulo": "Sorteio", "desc": "Prêmio incrivel", "minutos": 60, "ganhadores": 1, "cargo_extra": None, "qtd_extras": 2, "cor": 0x29a6fe}
+        self.dados = {"titulo": "Sorteio", "desc": "Prêmio incrível", "minutos": 60, "ganhadores": 1, "cargo_extra": None, "qtd_extras": 2, "cor": 0x29a6fe}
         
     def gerar_embed(self):
         embed = discord.Embed(title="⚙️ Painel do Sorteio", description=f"**{self.dados['titulo']}**\n```{self.dados['desc']}```", color=self.dados["cor"])
@@ -400,7 +448,6 @@ async def cmd_reroll(interaction: discord.Interaction, mensagem_id: str):
             
         novo_vencedor = random.choice(users)
         
-        # Opcional: Atualizar a embed original com o novo ganhador
         if msg.embeds:
             emb = msg.embeds[0]
             emb.description = f"**ENCERRADO (Reroll)**\n👑 **Novo Ganhador:** {novo_vencedor.mention}"
@@ -408,13 +455,13 @@ async def cmd_reroll(interaction: discord.Interaction, mensagem_id: str):
             
         await interaction.followup.send(f"🎲 **REROLL!** O novo vencedor é: {novo_vencedor.mention}! Parabéns!")
     except discord.NotFound:
-        await interaction.followup.send("❌ Mensagem não encontrada neste canal. Certifique-se de usar o comando no mesmo canal do sorteio.")
+        await interaction.followup.send("❌ Mensagem não encontrada neste canal. Use o comando no mesmo canal do sorteio.")
     except Exception as e:
         await interaction.followup.send(f"❌ Ocorreu um erro: {e}")
 
 # ==================== START ====================
 @bot.event
-async def on_ready(): print("✅ Bot Definitivo Online! (Com Reroll e Anti-Crash integrados)")
+async def on_ready(): print("✅ Bot Absolutamente Completo e Operante! (Com Filtro de Palavrões ativado)")
 
 if __name__ == "__main__":
     TOKEN = os.getenv("TOKEN")
