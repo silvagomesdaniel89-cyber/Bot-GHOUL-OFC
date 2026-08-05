@@ -249,12 +249,17 @@ async def on_guild_emojis_update(guild, before, after):
 async def on_webhooks_update(channel): await enviar_log(channel.guild, "🔗 Webhooks - Atualizado", f"Webhooks modificados em {channel.mention}.", color=0x55aaff)
 
 # ==================== TICKETS (1 por pessoa + /close) ====================
+# ==================== TICKETS (1 por pessoa + /close) ====================
 class TicketSelect(discord.ui.Select):
     def __init__(self):
-        super().__init__(placeholder="🎫 Selecione o setor...", options=[
-            discord.SelectOption(label="Suporte Geral", emoji="💬", value="geral"),
-            discord.SelectOption(label="Denúncias", emoji="🚨", value="denuncia")
-        ])
+        super().__init__(
+            placeholder="🎫 Selecione o setor...", 
+            custom_id="ticket_select_menu",
+            options=[
+                discord.SelectOption(label="Suporte Geral", emoji="💬", value="geral"),
+                discord.SelectOption(label="Denúncias", emoji="🚨", value="denuncia")
+            ]
+        )
 
     async def callback(self, interaction: discord.Interaction):
         guild, user = interaction.guild, interaction.user
@@ -281,8 +286,8 @@ class TicketSelect(discord.ui.Select):
         db.commit()
 
         embed = discord.Embed(title="Atendimento", description=f"{user.mention}, use `/close` ou o botão abaixo para fechar.", color=COR_EMBED)
-        view = discord.ui.View()
-        btn = discord.ui.Button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒")
+        view = discord.ui.View(timeout=None)
+        btn = discord.ui.Button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="fechar_ticket_btn")
         async def close_cb(i): await fechar_ticket(i, canal)
         btn.callback = close_cb
         view.add_item(btn)
@@ -319,7 +324,6 @@ async def cmd_close(interaction: discord.Interaction):
     if not cursor.fetchone() and not interaction.channel.name.startswith("ticket-"):
         return await interaction.response.send_message("❌ Este comando só pode ser usado dentro de um ticket.", ephemeral=True)
     await fechar_ticket(interaction, interaction.channel)
-
 # ==================== SORTEIO INTERATIVO & REROLL ====================
 class SetupSorteioModal(discord.ui.Modal):
     def __init__(self, view, tipo):
