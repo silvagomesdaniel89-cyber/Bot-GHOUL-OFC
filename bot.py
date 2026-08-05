@@ -1,4 +1,4 @@
-Import asyncio
+import asyncio
 import datetime
 import os
 import re
@@ -16,7 +16,7 @@ import imagehash
 from PIL import Image
 
 # ==================== SERVIDOR WEB PARA MANTER ONLINE ====================
-app = Flask(_name_)
+app = Flask(__name__)
 
 @app.route("/")
 def home():
@@ -87,9 +87,9 @@ IMAGENS_BLOQUEADAS = [
 
 # ==================== ESTRUTURA DO BOT ====================
 class MeuBot(commands.Bot):
-    def _init_(self):
+    def __init__(self):
         intents = discord.Intents.all()
-        super()._init_(command_prefix="!", intents=intents, help_command=None)
+        super().__init__(command_prefix="!", intents=intents, help_command=None)
         self.mensagens_ignoradas = set()
         self.ultimos_banimentos = set()
         self.sorteios_ativos = {}
@@ -129,12 +129,12 @@ async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None, a
         embed.set_thumbnail(url=user.display_avatar.url)
 
     embed.description = (
-        f"👤 *Usuário:* {user.mention}\n"
-        f"📛 *Nick:* {user.name}\n"
-        f"🆔 *ID:* {user.id}\n"
-        f"🛡️ *Staff:* {staff.mention if hasattr(staff, 'mention') else staff}\n"
-        f"🚨 *Ação:* {acao}\n"
-        f"📄 *Motivo:* {motivo}\n"
+        f"👤 **Usuário:** {user.mention}\n"
+        f"📛 **Nick:** `{user.name}`\n"
+        f"🆔 **ID:** `{user.id}`\n"
+        f"🛡️ **Staff:** {staff.mention if hasattr(staff, 'mention') else staff}\n"
+        f"🚨 **Ação:** `{acao}`\n"
+        f"📄 **Motivo:** {motivo}\n"
     )
 
     if prova_url:
@@ -153,12 +153,12 @@ async def executar_banimento(guild, membro, staff, motivo, acao_log, prova_url=N
     bot.ultimos_banimentos.add(membro.id)
 
     carta_dm = (
-        f"*{nome_servidor} | Aviso de Banimento*\n\n"
+        f"**{nome_servidor} | Aviso de Banimento**\n\n"
         f"Caro(a) {membro.mention},\n"
         f"Você foi banido(a) por violar as nossas regras de segurança extrema.\n\n"
-        f"*Motivo:* {motivo}\n\n"
+        f"**Motivo:** {motivo}\n\n"
         f"A decisão de banir permanece final.\n\n"
-        f"Equipe de Segurança - {nome_servidor}"
+        f"*Equipe de Segurança - {nome_servidor}*"
     )
     try: await membro.send(carta_dm)
     except: pass
@@ -192,7 +192,7 @@ async def enviar_log_avancado(guild, title, description, user=None, image_url=No
 async def on_voice_state_update(member, before, after):
     if before.channel != after.channel:
         if before.channel is None:
-            await enviar_log_avancado(member.guild, "🔊 Entrou no Canal de Voz", f"👤 *Membro:* {member.mention}\n📥 *Canal:* {after.channel.mention}", member)
+            await enviar_log_avancado(member.guild, "🔊 Entrou no Canal de Voz", f"👤 **Membro:** {member.mention}\n📥 **Canal:** {after.channel.mention}", member)
         elif after.channel is None:
             await asyncio.sleep(1)
             desconectado_por = None
@@ -202,9 +202,9 @@ async def on_voice_state_update(member, before, after):
                     break
             
             if desconectado_por:
-                await enviar_log_avancado(member.guild, "🚫 Desconectado à Força", f"👤 *Membro:* {member.mention}\n📤 *Canal:* {before.channel.mention}\n🛡️ *Staff:* {desconectado_por.mention}", member)
+                await enviar_log_avancado(member.guild, "🚫 Desconectado à Força", f"👤 **Membro:** {member.mention}\n📤 **Canal:** {before.channel.mention}\n🛡️ **Staff:** {desconectado_por.mention}", member)
             else:
-                await enviar_log_avancado(member.guild, "🔇 Saiu do Canal de Voz", f"👤 *Membro:* {member.mention}\n📤 *Saiu de:* {before.channel.mention}", member)
+                await enviar_log_avancado(member.guild, "🔇 Saiu do Canal de Voz", f"👤 **Membro:** {member.mention}\n📤 **Saiu de:** {before.channel.mention}", member)
         else:
             await asyncio.sleep(1)
             movido_por = None
@@ -213,8 +213,8 @@ async def on_voice_state_update(member, before, after):
                     movido_por = entry.user
                     break
 
-            desc = f"👤 *Membro:* {member.mention}\n⬅️ *Antes:* {before.channel.mention}\n➡️ *Agora:* {after.channel.mention}"
-            if movido_por: desc += f"\n🛡️ *Movido por:* {movido_por.mention}"
+            desc = f"👤 **Membro:** {member.mention}\n⬅️ **Antes:** {before.channel.mention}\n➡️ **Agora:** {after.channel.mention}"
+            if movido_por: desc += f"\n🛡️ **Movido por:** {movido_por.mention}"
             await enviar_log_avancado(member.guild, "🔄 Moveu de Canal", desc, member)
 
 @bot.event
@@ -223,8 +223,8 @@ async def on_guild_channel_create(channel):
     criado_por = None
     async for entry in channel.guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_create):
         if entry.target.id == channel.id: criado_por = entry.user; break
-    desc = f"📁 *Canal:* {channel.mention} ({channel.name})"
-    if criado_por: desc += f"\n🛡️ *Criado por:* {criado_por.mention}"
+    desc = f"📁 **Canal:** {channel.mention} (`{channel.name}`)"
+    if criado_por: desc += f"\n🛡️ **Criado por:** {criado_por.mention}"
     await enviar_log_avancado(channel.guild, "📁 Novo Canal Criado", desc)
 
 @bot.event
@@ -233,8 +233,8 @@ async def on_guild_channel_delete(channel):
     apagado_por = None
     async for entry in channel.guild.audit_logs(limit=5, action=discord.AuditLogAction.channel_delete):
         if entry.target.id == channel.id: apagado_por = entry.user; break
-    desc = f"📁 *Canal:* {channel.name}"
-    if apagado_por: desc += f"\n🛡️ *Apagado por:* {apagado_por.mention}"
+    desc = f"📁 **Canal:** `{channel.name}`"
+    if apagado_por: desc += f"\n🛡️ **Apagado por:** {apagado_por.mention}"
     await enviar_log_avancado(channel.guild, "🗑️ Canal Apagado", desc)
 
 @bot.event
@@ -246,8 +246,8 @@ async def on_member_ban(guild, user):
         if entry.target.id == user.id:
             banido_por, motivo = entry.user, entry.reason
             break
-    desc = f"👤 *Usuário:* {user.mention} ({user.id})\n📄 *Motivo:* {motivo}"
-    if banido_por: desc += f"\n🛡️ *Banido por:* {banido_por.mention}"
+    desc = f"👤 **Usuário:** {user.mention} (`{user.id}`)\n📄 **Motivo:** {motivo}"
+    if banido_por: desc += f"\n🛡️ **Banido por:** {banido_por.mention}"
     await enviar_log_avancado(guild, "🔨 Usuário Banido", desc, user)
 
 
@@ -314,7 +314,7 @@ async def on_message(message):
             bot.mensagens_ignoradas.add(message.id)
             try: await message.delete()
             except: pass
-            await executar_banimento(message.guild, message.author, bot.user, f"Golpe/Scam detectado: {termo}", "Ban (Automático)")
+            await executar_banimento(message.guild, message.author, bot.user, f"Golpe/Scam detectado: `{termo}`", "Ban (Automático)")
             return
 
     # Palavrões
@@ -324,7 +324,7 @@ async def on_message(message):
             try: await message.delete()
             except: pass
             await message.channel.send(f"⚠️ {message.author.mention}, modere seu linguajar!", delete_after=5)
-            await enviar_log_avancado(message.guild, "🛡️ Filtro - Palavrão", f"👤 *Usuário:* {message.author.mention}\n💬 *Canal:* {message.channel.mention}\n*Mensagem:* {message.content}")
+            await enviar_log_avancado(message.guild, "🛡️ Filtro - Palavrão", f"👤 **Usuário:** {message.author.mention}\n💬 **Canal:** {message.channel.mention}\n**Mensagem:** ```{message.content}```")
             return
 
     # Convites
@@ -341,8 +341,8 @@ async def on_message(message):
 
 # ==================== SISTEMA DE TICKETS (COMPLETO) ====================
 class TicketCloseView(discord.ui.View):
-    def _init_(self):
-        super()._init_(timeout=None)
+    def __init__(self):
+        super().__init__(timeout=None)
 
     @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, custom_id="fechar_ticket_btn", emoji="🔒")
     async def fechar_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -354,13 +354,13 @@ class TicketCloseView(discord.ui.View):
             pass
 
 class TicketSelect(discord.ui.Select):
-    def _init_(self):
+    def __init__(self):
         options = [
             discord.SelectOption(label="Atendimento Geral", description="Fale com a Staff sobre dúvidas ou suporte", emoji="💬", value="geral"),
             discord.SelectOption(label="Denúncias & Golpes", description="Denuncie jogadores ou tentativas de golpe", emoji="🚨", value="denuncia"),
             discord.SelectOption(label="Parcerias", description="Propostas de parcerias com o servidor", emoji="🤝", value="parceria"),
         ]
-        super()._init_(placeholder="🎫 Clique aqui para abrir um atendimento...", min_values=1, max_values=1, options=options, custom_id="ticket_select_menu")
+        super().__init__(placeholder="🎫 Clique aqui para abrir um atendimento...", min_values=1, max_values=1, options=options, custom_id="ticket_select_menu")
 
     async def callback(self, interaction: discord.Interaction):
         guild = interaction.guild
@@ -407,8 +407,8 @@ class TicketSelect(discord.ui.Select):
             await interaction.followup.send(f"❌ Erro ao criar canal de ticket: {e}", ephemeral=True)
 
 class TicketView(discord.ui.View):
-    def _init_(self):
-        super()._init_(timeout=None)
+    def __init__(self):
+        super().__init__(timeout=None)
         self.add_item(TicketSelect())
 
 
@@ -439,7 +439,7 @@ async def sorteio(
     embed.add_field(name="Termina em", value=discord.utils.format_dt(termino, 'R'), inline=True)
     
     if cargo_extra and entradas_extras > 1:
-        embed.add_field(name="✨ Vantagem Especial", value=f"Membros com {cargo_extra.mention} recebem *{entradas_extras} entradas* no sorteio!", inline=False)
+        embed.add_field(name="✨ Vantagem Especial", value=f"Membros com {cargo_extra.mention} recebem **{entradas_extras} entradas** no sorteio!", inline=False)
         
     await interaction.response.send_message("Sorteio iniciado!", ephemeral=True)
     msg = await interaction.channel.send(embed=embed)
@@ -485,10 +485,10 @@ async def finalizar_sorteio(channel, msg_id):
         
         vencedores_mentions = ", ".join(v.mention for v in vencedores)
         embed = msg.embeds[0]
-        embed.description = f"*SORTEIO ENCERRADO*\n\nGanhadores: {vencedores_mentions}"
+        embed.description = f"**SORTEIO ENCERRADO**\n\nGanhadores: {vencedores_mentions}"
         embed.color = 0x2b2d31
         await msg.edit(embed=embed)
-        await channel.send(f"🎊 Parabéns {vencedores_mentions}! Vocês ganharam *{embed.title.replace('🎉 SORTEIO: ', '')}*! (Link: {msg.jump_url})")
+        await channel.send(f"🎊 Parabéns {vencedores_mentions}! Vocês ganharam **{embed.title.replace('🎉 SORTEIO: ', '')}**! (Link: {msg.jump_url})")
     except Exception as e:
         print(f"Erro ao finalizar sorteio: {e}")
 
@@ -527,7 +527,7 @@ async def limpar(interaction: discord.Interaction, quantidade: int):
     
     await interaction.response.defer(ephemeral=True)
     apagadas = await interaction.channel.purge(limit=quantidade)
-    await interaction.followup.send(f"🧹 {len(apagadas)} mensagens foram apagadas com sucesso!", ephemeral=True)
+    await interaction.followup.send(f"🧹 `{len(apagadas)}` mensagens foram apagadas com sucesso!", ephemeral=True)
 
 @bot.tree.command(name="ban", description="Bane um membro do servidor manualmente.")
 @app_commands.describe(membro="Membro a ser banido", motivo="Motivo do banimento")
