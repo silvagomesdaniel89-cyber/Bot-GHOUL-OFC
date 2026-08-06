@@ -21,12 +21,8 @@ from PIL import Image
 DB_FILE = "database.json"
 
 def carregar_db():
-    """
-    Carrega o banco de dados JSON persistente.
-    Caso o arquivo não exista ou esteja corrompido, inicializa um dicionário limpo.
-    """
     if not os.path.exists(DB_FILE):
-        print("[DATABASE] Arquivo database.json não encontrado. Criando nova base estruturada.")
+        print("[DATABASE] Arquivo não encontrado. Criando nova base estruturada.")
         return {
             "hashes_proibidos": [], 
             "sorteios": {}, 
@@ -38,7 +34,7 @@ def carregar_db():
             print("[DATABASE] Banco de dados carregado com sucesso.")
             return json.load(f)
     except Exception as e:
-        print(f"[DATABASE ERROR] Erro crítico ao ler o JSON: {e}. Restaurando padrão seguro.")
+        print(f"[DATABASE ERROR] Erro crítico ao ler o JSON: {e}.")
         return {
             "hashes_proibidos": [], 
             "sorteios": {}, 
@@ -47,16 +43,12 @@ def carregar_db():
         }
 
 def salvar_db(data):
-    """
-    Salva os dados atuais de forma segura no arquivo JSON para evitar perdas em reboots.
-    """
     try:
         with open(DB_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
     except Exception as e:
-        print(f"[DATABASE ERROR] Falha ao salvar dados no disco: {e}")
+        print(f"[DATABASE ERROR] Falha ao salvar: {e}")
 
-# Instancia o banco de dados na inicialização
 db = carregar_db()
 
 # =====================================================================
@@ -66,27 +58,21 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    """
-    Endpoint HTTP mantido ativo para impedir que a Render adormeça o bot.
-    """
-    return "GHOUL SECURITY - Sistema de Segurança Avançada & Gestão Ativo 24/7."
+    return "GHOUL SECURITY - Operacional."
 
 def run_server():
-    """
-    Executa o servidor Flask em uma thread paralela em background.
-    """
     try:
         port = int(os.environ.get("PORT", 8080))
         app.run(host="0.0.0.0", port=port)
     except Exception as e:
-        print(f"[FLASK ERROR] Erro ao iniciar servidor web local: {e}")
+        print(f"[FLASK ERROR] {e}")
 
 Thread(target=run_server, daemon=True).start()
 
 # =====================================================================
 # CONFIGURAÇÕES GLOBAIS E ESTÉTICA VERMELHA TOTAL (0xFF0000)
 # =====================================================================
-COR_PRINCIPAL = 0xFF0000  # Vermelho Puro Absoluto para toda a interface
+COR_PRINCIPAL = 0xFF0000
 
 CONFIG_SERVIDORES = {
     1143627184842493992: {
@@ -126,14 +112,7 @@ IMAGENS_TICKETS = {
     1489007277267620013: "https://cdn.discordapp.com/attachments/1431364353482948608/1533832231108214864/file_000000004fd4820eb39bb046269d5d96.png",
 }
 
-# =====================================================================
-# CLASSE PRINCIPAL DO BOT DE ALTA PERFORMANCE
-# =====================================================================
 class BotSupremoUltimate(commands.Bot):
-    """
-    Gerenciador principal de eventos do bot, reconexões, sincronização de comandos
-    Slash e restauração de views persistentes em memória.
-    """
     def __init__(self):
         super().__init__(
             command_prefix="!", 
@@ -142,33 +121,23 @@ class BotSupremoUltimate(commands.Bot):
         )
 
     async def setup_hook(self):
-        print("[SETUP] Inicializando views persistentes...")
-        
-        # Reconecta os botões do sistema de tickets
+        print("[SETUP] Inicializando views...")
         self.add_view(TicketPainelView())
         self.add_view(TicketAcoesView())
         
-        # Reconecta os botões de sorteios ativos salvos em JSON
-        restaurados = 0
         for msg_id, dados in list(db["sorteios"].items()):
             if dados.get("status") == "ativo":
                 self.add_view(ParticiparSorteioView(msg_id, dados["config"]))
-                restaurados += 1
-                
-        print(f"[SETUP] {restaurados} sorteios ativos re-anexados com sucesso.")
                 
         try:
             synced = await self.tree.sync()
-            print(f"[SYNC] {len(synced)} comandos Slash sincronizados com sucesso.")
+            print(f"[SYNC] {len(synced)} comandos Slash ativos.")
         except Exception as e:
-            print(f"[SYNC ERROR] Falha ao sincronizar comandos: {e}")
+            print(f"[SYNC ERROR] {e}")
 
 bot = BotSupremoUltimate()
 
 def obter_config(guild_id): 
-    """
-    Retorna as configurações do servidor correspondente ou um modelo vazio seguro.
-    """
     return CONFIG_SERVIDORES.get(guild_id, {
         "nome": "Servidor Desconhecido",
         "canal_logs": None,
@@ -178,26 +147,23 @@ def obter_config(guild_id):
     })
 
 # =====================================================================
-# SISTEMA DE LOGS DE PUNIÇÕES COM CONSOLE DEBUG
+# SISTEMA DE LOGS DE PUNIÇÕES BLINDADO
 # =====================================================================
 async def enviar_log_punicao(guild, user, staff, acao, motivo, prova_bytes=None):
-    """
-    Envia logs detalhados para o canal de punições com rastreamento no console.
-    """
     config = obter_config(guild.id)
     canal_id_config = config.get("canal_punicoes")
     
-    print(f"[LOG DEBUG] Tentando disparar log para Guild: {guild.name} (ID: {guild.id})")
-    print(f"[LOG DEBUG] Canal de punições configurado no dicionário: {canal_id_config}")
-
     if not canal_id_config: 
-        print(f"[LOGS ERRO] O ID do canal de punições NÃO está definido no dicionário para este servidor!")
+        print(f"[LOGS ERRO] Servidor ID {guild.id} sem canal de punição configurado.")
         return
         
     canal = guild.get_channel(canal_id_config)
     if not canal: 
-        print(f"[LOGS ERRO] O canal com ID {canal_id_config} não foi encontrado pelo bot! Verifique se o ID está correto e o bot está no servidor.")
-        return
+        try:
+            canal = await guild.fetch_channel(canal_id_config)
+        except:
+            print(f"[LOGS ERRO] Não achei o canal de punição (ID: {canal_id_config}).")
+            return
 
     embed = discord.Embed(
         title=f"🚨 REGISTRO DE SEGURANÇA | {acao}", 
@@ -209,10 +175,8 @@ async def enviar_log_punicao(guild, user, staff, acao, motivo, prova_bytes=None)
         embed.set_thumbnail(url=user.display_avatar.url)
     
     embed.add_field(name="👤 Alvo da Ação", value=f"{user.mention}\n(`{user.id}`)", inline=True)
-    
     staff_name = staff.mention if hasattr(staff, 'mention') else str(staff)
     embed.add_field(name="🛡️ Responsável", value=f"{staff_name}", inline=True)
-    
     embed.add_field(name="📄 Descrição / Motivo", value=f"```ini\n[ {motivo} ]\n```", inline=False)
     
     avatar_url = bot.user.display_avatar.url if bot.user.display_avatar else None
@@ -225,40 +189,51 @@ async def enviar_log_punicao(guild, user, staff, acao, motivo, prova_bytes=None)
             await canal.send(embed=embed, file=file)
         else:
             await canal.send(embed=embed)
-        print(f"[LOGS SUCESSO] Log enviado perfeitamente para o canal #{canal.name}!")
+        print(f"[LOGS] Log '{acao}' enviado com sucesso.")
     except Exception as e:
-        print(f"[LOGS ERRO CRÍTICO] Falha ao enviar mensagem no canal de logs: {e}")
+        print(f"[LOGS ERRO] Falha ao escrever no canal: {e}")
 
 @bot.event
 async def on_member_ban(guild, user):
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(2)
     try:
         async for entry in guild.audit_logs(limit=2, action=discord.AuditLogAction.ban):
             if entry.target.id == user.id:
                 if entry.user.id == bot.user.id: 
                     return 
-                motivo = entry.reason if entry.reason else "Nenhum motivo especificado."
+                motivo = entry.reason if entry.reason else "Banido manualmente pela interface do Discord."
                 await enviar_log_punicao(guild, user, entry.user, "BANIMENTO MANUAL", motivo)
                 break
-    except Exception as e:
-        print(f"[EVENT BAN ERROR] {e}")
+    except: pass
 
 @bot.event
 async def on_member_remove(member):
-    await asyncio.sleep(1.5)
+    await asyncio.sleep(2)
     try:
         async for entry in member.guild.audit_logs(limit=2, action=discord.AuditLogAction.kick):
             if entry.target.id == member.id:
                 if entry.user.id == bot.user.id: 
                     return
-                motivo = entry.reason if entry.reason else "Nenhum motivo especificado."
+                motivo = entry.reason if entry.reason else "Expulso manualmente pela interface do Discord."
                 await enviar_log_punicao(member.guild, member, entry.user, "EXPULSÃO MANUAL", motivo)
                 break
-    except Exception as e:
-        print(f"[EVENT KICK ERROR] {e}")
+    except: pass
+
+@bot.event
+async def on_member_update(before, after):
+    if not before.is_timed_out() and after.is_timed_out():
+        await asyncio.sleep(2)
+        try:
+            async for entry in after.guild.audit_logs(limit=2, action=discord.AuditLogAction.member_update):
+                if entry.target.id == after.id and hasattr(entry.after, 'communication_disabled_until'):
+                    if entry.user.id == bot.user.id: return
+                    motivo = entry.reason if entry.reason else "Mutado manualmente pela interface do Discord."
+                    await enviar_log_punicao(after.guild, after, entry.user, "CASTIGO (TIMEOUT) MANUAL", motivo)
+                    break
+        except: pass
 
 # =====================================================================
-# AUTOMOD TOTAL (APAGA DE TODOS: MEMBROS, MODS E DONOS)
+# AUTOMOD IMPLACÁVEL
 # =====================================================================
 @bot.tree.command(name="bloquear_imagem", description="[ADMIN] Adiciona uma imagem na Blacklist letal.")
 @app_commands.default_permissions(administrator=True)
@@ -278,27 +253,20 @@ async def bloquear_imagem(interaction: discord.Interaction, imagem: discord.Atta
             
         embed = discord.Embed(
             title="⛔ IMAGEM REGISTRADA NA BLACKLIST", 
-            description=f"A imagem foi computada com sucesso.\nQualquer pessoa (membro ou dono) que tentar postar terá a mensagem apagada instantaneamente.\n\n**Hash Gerado:** `{h}`", 
+            description=f"Imagem salva. Qualquer pessoa que postar sofrerá punição.\n\n**Hash:** `{h}`", 
             color=COR_PRINCIPAL
         )
         embed.set_footer(text="GHOUL SECURITY", icon_url=bot.user.display_avatar.url if bot.user.display_avatar else None)
         await interaction.followup.send(embed=embed, ephemeral=True)
     except Exception as e:
-        await interaction.followup.send(f"❌ Erro ao computar hash da imagem: {e}", ephemeral=True)
+        await interaction.followup.send(f"❌ Erro ao computar imagem: {e}", ephemeral=True)
 
 @bot.event
 async def on_message(message):
-    """
-    Filtro Automod Universal. 
-    Intercepta mensagens de QUALQUER usuário (incluindo o Dono do Servidor).
-    Apaga o conteúdo proibido e registra logs.
-    """
     if message.author.bot or not message.guild: 
         return
 
-    # =================================================================
-    # 1. VERIFICAÇÃO DE IMAGENS PROIBIDAS (APAGA DE TODOS, BANE SE NÃO FOR DONO)
-    # =================================================================
+    # 1. IMAGENS PROIBIDAS (APAGA E TRATA DONO/STAFF OU MEMBRO)
     if message.attachments and db["hashes_proibidos"]:
         for anexo in message.attachments:
             if anexo.content_type and anexo.content_type.startswith("image/"):
@@ -311,18 +279,38 @@ async def on_message(message):
                         target_hash = imagehash.hex_to_hash(h_str)
                         if img_hash - target_hash <= 6:
                             
-                            # AÇÃO 1: APAGA A MENSAGEM SEMPRE (Mesmo se for o dono ou admin)
+                            # APAGA A MENSAGEM DO INFRATOR
                             try: 
                                 await message.delete()
-                                print(f"[AUTOMOD] Mensagem com imagem proibida de {message.author} foi apagada com sucesso.")
-                            except Exception as e:
-                                print(f"[AUTOMOD ERRO] Não consegui apagar a imagem: {e}")
+                            except: pass
 
-                            # Verifica se o autor é o Dono supremo do servidor
+                            # Verifica se é o Dono ou Staff / Cargo Maior que o Bot
                             is_dono = (message.author.id == message.guild.owner_id)
-                            
-                            if not is_dono:
-                                # Se não for o dono, aplica o banimento normal
+                            is_superior = is_dono or message.author.guild_permissions.administrator or (message.author.top_role >= message.guild.me.top_role)
+
+                            if is_superior:
+                                # Apenas apaga, avisa no chat e registra no log que não pôde banir por cargo maior/dono
+                                motivo_log = f"Imagem restrita apagada. O autor ({message.author}) é o Dono ou possui cargo superior/equivalente, portanto não foi possível aplicar o banimento."
+                                
+                                try:
+                                    aviso_chat = await message.channel.send(embed=discord.Embed(
+                                        description=f"⚠️ {message.author.mention}, sua imagem foi apagada pelo AutoMod, mas não foi possível realizar o banimento por você possuir um cargo superior ou ser o dono do servidor.",
+                                        color=COR_PRINCIPAL
+                                    ))
+                                    await aviso_chat.delete(delay=7)
+                                except: pass
+
+                                await enviar_log_punicao(
+                                    message.guild, 
+                                    message.author, 
+                                    bot.user, 
+                                    "INTERCEPTAÇÃO DE IMAGEM (STAFF/DONO)", 
+                                    motivo_log, 
+                                    prova_bytes=img_bytes
+                                )
+                                return
+                            else:
+                                # Membro comum: Tenta banir
                                 try:
                                     await message.author.send(embed=discord.Embed(
                                         title="🚨 BANIMENTO AUTOMÁTICO", 
@@ -331,35 +319,31 @@ async def on_message(message):
                                     ))
                                 except: pass
 
+                                status_ban = ""
                                 try:
                                     await message.guild.ban(message.author, reason="AutoMod Letal: Envio de imagem proibida.")
+                                    status_ban = "Membro banido com sucesso."
+                                except discord.Forbidden:
+                                    status_ban = "Falha: O bot não tem permissão suficiente para banir este membro."
                                 except Exception as e:
-                                    print(f"[AUTOMOD ERRO] Falha ao banir membro: {e}")
-                            else:
-                                print(f"[AUTOMOD AVISO] O autor é o DONO do servidor ({message.author}). A imagem foi apagada com sucesso, mas o banimento foi ignorado por segurança da API.")
+                                    status_ban = f"Erro: {e}"
 
-                            # AÇÃO 2: DISPARA O LOG DE PUNIÇÃO IMEDIATAMENTE
-                            await enviar_log_punicao(
-                                message.guild, 
-                                message.author, 
-                                bot.user, 
-                                "INTERCEPTAÇÃO DE IMAGEM PROIBIDA", 
-                                f"Mensagem com imagem restrita apagada de {message.author} (`{message.author.id}`).", 
-                                prova_bytes=img_bytes
-                            )
-                            return
-                except Exception as e:
-                    print(f"[AUTOMOD ERROR] Falha no processamento de hash da imagem: {e}")
+                                await enviar_log_punicao(
+                                    message.guild, 
+                                    message.author, 
+                                    bot.user, 
+                                    "BAN AUTOMÁTICO (IMAGEM PROIBIDA)", 
+                                    f"Imagem letal apagada.\n**Status do Ban:** {status_ban}", 
+                                    prova_bytes=img_bytes
+                                )
+                                return
+                except: pass
 
-    # =================================================================
-    # 2. FILTRO ANTI-DIVULGAÇÃO DE LINKS (APAGA DE TODOS)
-    # =================================================================
+    # 2. FILTRO ANTI-DIVULGAÇÃO DE LINKS
     texto_inf = message.content.lower()
     if "discord.gg/" in texto_inf or "discord.com/invite/" in texto_inf:
         try:
             await message.delete()
-            print(f"[AUTOMOD] Link de convite postado por {message.author} foi apagado.")
-            
             aviso = await message.channel.send(embed=discord.Embed(
                 description=f"⚠️ {message.author.mention}, a divulgação de links de convite é proibida!", 
                 color=COR_PRINCIPAL
@@ -374,12 +358,9 @@ async def on_message(message):
                 f"Link de convite apagado no canal {message.channel.mention}."
             )
             return
-        except Exception as e:
-            print(f"[AUTOMOD ERRO] Falha ao filtrar link: {e}")
+        except: pass
 
-    # =================================================================
-    # 3. FILTRO MASSIVO DE PALAVRÕES (APAGA DE TODOS)
-    # =================================================================
+    # 3. FILTRO MASSIVO DE PALAVRÕES (MARCA E AVISA O BOBOCA + MANDA PRO LOG)
     palavroes = [
         "fdp", "fdps", "vsf", "vtnc", "pnc", "tnc", "pqp", "krl", "crrl", "kralho", 
         "caralho", "porra", "merda", "bosta", "buceta", "puta", "cu", "cuzao", 
@@ -393,11 +374,8 @@ async def on_message(message):
     
     for p in palavroes:
         if p in palavras_msg or any(p in w for w in palavras_msg):
-            try: 
-                await message.delete()
-                print(f"[AUTOMOD] Palavrão interceptado e apagado de {message.author}.")
-            except: 
-                pass
+            try: await message.delete()
+            except: pass
             
             embed_palavra = discord.Embed(
                 description=f"⚠️ {message.author.mention}, Cuidado com seu linguajar seu BOBOCA!", 
@@ -408,8 +386,7 @@ async def on_message(message):
             try:
                 msg_alerta = await message.channel.send(embed=embed_palavra)
                 await msg_alerta.delete(delay=5)
-            except: 
-                pass
+            except: pass
                 
             await enviar_log_punicao(
                 message.guild, 
@@ -420,17 +397,12 @@ async def on_message(message):
             )
             return
 
-    # Processa os comandos de barra ou prefixo normalmente para todos
     await bot.process_commands(message)
 
 # =====================================================================
-# SISTEMA DE TICKETS PROFISSIONAL (BOTÕES LADO A LADO)
+# SISTEMA DE TICKETS PROFISSIONAL
 # =====================================================================
 class TicketAcoesView(discord.ui.View):
-    """
-    View acoplada no canal privado do ticket contendo os botões 
-    'Fechar Ticket' e 'Reivindicar Ticket' lado a lado na mesma linha (row=0).
-    """
     def __init__(self):
         super().__init__(timeout=None)
 
@@ -450,10 +422,8 @@ class TicketAcoesView(discord.ui.View):
         embed.set_footer(text="GHOUL SECURITY", icon_url=bot.user.display_avatar.url if bot.user.display_avatar else None)
         await interaction.response.send_message(embed=embed)
         await asyncio.sleep(5)
-        try: 
-            await interaction.channel.delete(reason=f"Ticket fechado por {interaction.user}")
-        except Exception as e: 
-            print(f"[TICKET ERROR] Falha ao deletar canal: {e}")
+        try: await interaction.channel.delete(reason=f"Ticket fechado por {interaction.user}")
+        except: pass
 
     @discord.ui.button(
         label="Reivindicar Ticket", 
@@ -465,16 +435,13 @@ class TicketAcoesView(discord.ui.View):
     async def reivindicar_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
             title="✋ ATENDIMENTO ASSUMIDO", 
-            description=f"O staff {interaction.user.mention} reivindicou este atendimento e assumiu a responsabilidade exclusiva.", 
+            description=f"O staff {interaction.user.mention} assumiu a responsabilidade exclusiva deste ticket.", 
             color=COR_PRINCIPAL
         )
         embed.set_footer(text="GHOUL SECURITY", icon_url=bot.user.display_avatar.url if bot.user.display_avatar else None)
         await interaction.response.send_message(embed=embed)
 
 class TicketSelectDropdown(discord.ui.Select):
-    """
-    Menu suspenso com os departamentos do ticket.
-    """
     def __init__(self):
         options = [
             discord.SelectOption(label="Suporte Geral", description="Dúvidas e orientações gerais", emoji="💬", value="suporte"),
@@ -578,7 +545,7 @@ async def cmd_rem_membro(interaction: discord.Interaction, membro: discord.Membe
     await interaction.response.send_message(embed=discord.Embed(description=f"✅ {membro.mention} removido.", color=COR_PRINCIPAL))
 
 # =====================================================================
-# SISTEMA DE SORTEIOS COMPLETO (COM MODAIS E MULTIPLICADORES)
+# SISTEMA DE SORTEIOS
 # =====================================================================
 class SorteioModalGenerico(discord.ui.Modal):
     def __init__(self, painel, tipo, titulo):
@@ -760,28 +727,37 @@ async def cmd_reroll(interaction: discord.Interaction, mensagem_id: str):
     if canal: await canal.send(f"🎉 **REROLL!** O novo ganhador é <@{novo}>!")
 
 # =====================================================================
-# COMANDOS DE MODERAÇÃO
+# COMANDOS DE MODERAÇÃO OFICIAIS COM LOGS
 # =====================================================================
 @bot.tree.command(name="ban", description="[MOD] Bane um usuário")
 @app_commands.default_permissions(ban_members=True)
 async def cmd_ban(interaction: discord.Interaction, membro: discord.Member, motivo: str):
-    await membro.ban(reason=motivo)
-    await enviar_log_punicao(interaction.guild, membro, interaction.user, "BANIMENTO", motivo)
-    await interaction.response.send_message(f"✅ {membro.mention} banido.", ephemeral=True)
+    try:
+        await membro.ban(reason=motivo)
+        await interaction.response.send_message(embed=discord.Embed(description=f"✅ {membro.mention} banido.", color=COR_PRINCIPAL))
+        await enviar_log_punicao(interaction.guild, membro, interaction.user, "BANIMENTO", motivo)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Erro ao banir: {e}", ephemeral=True)
 
 @bot.tree.command(name="kick", description="[MOD] Expulsa um usuário")
 @app_commands.default_permissions(kick_members=True)
 async def cmd_kick(interaction: discord.Interaction, membro: discord.Member, motivo: str):
-    await membro.kick(reason=motivo)
-    await enviar_log_punicao(interaction.guild, membro, interaction.user, "EXPULSÃO", motivo)
-    await interaction.response.send_message(f"✅ {membro.mention} expulso.", ephemeral=True)
+    try:
+        await membro.kick(reason=motivo)
+        await interaction.response.send_message(embed=discord.Embed(description=f"✅ {membro.mention} expulso.", color=COR_PRINCIPAL))
+        await enviar_log_punicao(interaction.guild, membro, interaction.user, "EXPULSÃO", motivo)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Erro ao expulsar: {e}", ephemeral=True)
 
 @bot.tree.command(name="mute", description="[MOD] Silencia usuário (timeout)")
 @app_commands.default_permissions(moderate_members=True)
 async def cmd_mute(interaction: discord.Interaction, membro: discord.Member, minutos: int, motivo: str):
-    await membro.timeout(datetime.timedelta(minutes=minutos), reason=motivo)
-    await enviar_log_punicao(interaction.guild, membro, interaction.user, f"CASTIGO ({minutos}m)", motivo)
-    await interaction.response.send_message(f"✅ {membro.mention} mutado.", ephemeral=True)
+    try:
+        await membro.timeout(datetime.timedelta(minutes=minutos), reason=motivo)
+        await interaction.response.send_message(embed=discord.Embed(description=f"✅ {membro.mention} mutado por {minutos}m.", color=COR_PRINCIPAL))
+        await enviar_log_punicao(interaction.guild, membro, interaction.user, f"CASTIGO SILENCIOSO ({minutos}m)", motivo)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Erro ao mutar: {e}", ephemeral=True)
 
 @bot.tree.command(name="clear", description="[MOD] Limpa mensagens")
 @app_commands.default_permissions(manage_messages=True)
@@ -804,8 +780,8 @@ async def cmd_aviso(interaction: discord.Interaction, titulo: str, mensagem: str
 @bot.event
 async def on_ready():
     print("=" * 60)
-    print(f"🤖 GHOUL SECURITY ONLINE: {bot.user.name}")
-    print(f"🛡️ AutoMod Universal Ativo (Apaga de todos, bane membros).")
+    print(f"🤖 GHOUL SECURITY ONLINE E BLINDADO: {bot.user.name}")
+    print(f"🛡️ AutoMod: Apagando imagens, tratando donos/staffs, filtrando palavrões e gerando LOGS.")
     print("=" * 60)
 
 if __name__ == "__main__":
