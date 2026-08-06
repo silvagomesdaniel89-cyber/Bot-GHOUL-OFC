@@ -85,17 +85,19 @@ class MeuBot(commands.Bot):
         self.ultimos_banimentos = set() 
         self.ultimos_mutes = set()
         self.midia_cache = {} # Cache temporário de mídias deletadas
-class ViewGhoul(discord.ui.View):
-    def __init__(self):  # Indentado corretamente dentro da classe
-        super().__init__(timeout=None)
-        self.add_item(DropdownGhoul())
-       async def setup_hook(self):
+
+    async def setup_hook(self):
         self.add_view(ViewGhoul())
         self.add_view(ViewKings())
         self.add_view(ViewNightware())
         self.add_view(ViewValidar())
         self.add_view(ViewFechar())
         await self.tree.sync()
+
+class ViewGhoul(discord.ui.View):
+    def __init__(self):  
+        super().__init__(timeout=None)
+        self.add_item(DropdownGhoul())
 
 bot = MeuBot()
 
