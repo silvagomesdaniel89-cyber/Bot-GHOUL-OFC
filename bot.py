@@ -89,6 +89,7 @@ class ViewGhoul(discord.ui.View):
     def __init__(self):  # Indentado corretamente dentro da classe
         super().__init__(timeout=None)
         self.add_item(DropdownGhoul())
+       async def setup_hook(self):
         self.add_view(ViewGhoul())
         self.add_view(ViewKings())
         self.add_view(ViewNightware())
