@@ -63,60 +63,13 @@ TERMOS_BAN = [
     "nitrogratis", "onlyfansfree"
 ]
 
-palavroes = [
-        # Abreviações e siglas da internet
-        "fdp", "fdps", "f d p", "vsf", "vtnc", "pnc", "tnc", "vtmnc", "pqp", 
-        "krl", "crrl", "kralho", "caralh0", "kct", "kacete", "krai", "carai",
-        "p0rra", "prra", "mrd", "vsff", "vnc", "fdendo",
-        
-        # Palavrões clássicos e variações pesadas
-        "caralho", "caralhos", "caralhuda", "caralhudo",
-        "porra", "porraloca", "porrra", "porraloka",
-        "merda", "merdinha", "merdoes", "merdão",
-        "bosta", "bostinha", "bostalhão", "bostileiro", "bostola",
-        "buceta", "buketa", "bucetinha", "buseta", "boceta", "bucetão",
-        "puta", "putinha", "putasso", "putona", "putaria", "putadeirada",
-        "cu", "cuzao", "cuzão", "cuzinho", "cuzonas", "cusao", "cuzões",
-        "pau", "paumole", "pauzao", "pauzin", "paunocu", "paunoku",
-        "piroca", "pirocudo", "pirok", "pirraca", "pirokuda",
-        "foder", "fodendo", "fodeu", "fodido", "fodida", "fudido", "fudida", "fodão", "foderam", "focinho",
-        "cacete", "cacetada", "cacetinho",
-        "chupa", "chupando", "chupeta", "chupador", "chupadora",
-        "punheta", "punheteiro", "punheteira", "gozada", "gozar", "gozando",
-        "bicha", "bichona", "boiola", "viado", "viadinho", "viadaço", "traveco",
-        
-        # Xingamentos e ofensas morais pesadas
-        "arrombado", "arrombada", "arrombados", "arrombadas",
-        "desgraçado", "desgracado", "desgraçada", "desgracada", "desgraçados",
-        "corno", "cornos", "corna", "cornuda", "cornudo", "chifrudo", "chifruda",
-        "vagabundo", "vagabunda", "vagabundos", "vagabundas", "vagaba",
-        "otario", "otária", "otarios", "otárias", "othario", "otariano",
-        "imbecil", "imbecis", "idiota", "idiotas", "idiotice",
-        "retardado", "retardada", "retardados", "retardadas",
-        "escroto", "escrota", "escrotos", "escrotas",
-        "safado", "safada", "safados", "safadas",
-        "canalha", "canalhas", "miserável", "miseravel",
-        "desgraça", "desgraca", "peste", "praga", "inferno",
-        "babaca", "babacas", "bronco", "bronca",
-        "estúpido", "estupido", "estúpida", "estupida",
-        "fedido", "fedida", "fedorento", "fedorenta",
-        "lixo", "lixos", "lixoso", "lixosa",
-        "medroso", "medrosa", "mentiroso", "mentirosa",
-        "mongol", "mongolóide", "mongoloide", "nojento", "nojenta",
-        "noia", "nóia", "noias", "nóias", "patife",
-        "pirralho", "pirralha", "pivete", "pivetes",
-        "porco", "porca", "porcalhão", "porcalhona",
-        "preguiçoso", "preguiçosa", "prostituta", "prostituto",
-        "quenga", "rabudo", "rabuda", "rampeira",
-        "ridículo", "ridiculo", "ridícula", "ridicula",
-        "rola", "rolinha", "sacana", "sapatão", "sapatao",
-        "seboso", "sebosa", "sem-vergonha", "semvergonha",
-        "sujo", "suja", "tarado", "tarada", "tinhoso", "tinhosa",
-        "tolo", "tola", "trouxa", "trouxas", "vigarista",
-        "xexelento", "xexelenta", "xibiu", "xota", "xoxota",
-        "tomanocu", "toma no cu", "vai tomar no cu", "vai se fuder", "vai se fodir",
-        "puta que pariu", "putaquepariu", "filho da puta"
-    ]
+PALAVROES = [
+    "fdp", "filhodaputa", "caralho", "krl", "bosta", "escroto", "merda", 
+    "arrombado", "viado", "corno", "desgracado", "vagabundo", "porra", 
+    "buceta", "cacete", "puta", "puto", "cuzao", "pica", "rola", 
+    "xoxota", "vadia", "foder", "fodase", "tnc", "tomarnocu", "vsf", 
+    "vtnc", "pqp"
+]
 
 IMAGENS_BLOQUEADAS = [
     '9977339a644d9a62', '936c6c4e946cd966', '9748a8dcbd4a2579', 
@@ -154,103 +107,6 @@ def normalizar_texto(texto):
         texto = texto.replace(orig, sub)
     return re.sub(r'[^a-z0-9\s]', '', texto)
 
-# ==================== SISTEMA DE TICKETS E DROPDOWNS (#950606) ====================
-async def criar_canal_ticket(interaction: discord.Interaction, setor: str):
-    config = obter_config(interaction.guild.id)
-    if not config or interaction.response.is_done(): 
-        return
-    categoria = discord.utils.get(interaction.guild.categories, id=config["categoria_tickets"])
-    cargo_staff = interaction.guild.get_role(config["cargo_staff"])
-    
-    overwrites = {
-        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True),
-        interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
-    }
-    if cargo_staff: 
-        overwrites[cargo_staff] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
-
-    canal = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}-{setor}", category=categoria, overwrites=overwrites)
-    
-    embed = discord.Embed(
-        title=f"🚨 {config['nome']} - Atendimento", 
-        description=(
-            f"Olá {interaction.user.mention},\n\n"
-            f"Seu ticket para **{setor.upper()}** foi aberto com sucesso!\n"
-            f"Descreva detalhadamente o que precisa abaixo para que a equipe possa te responder."
-        ), 
-        color=0x950606
-    )
-    await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewFechar())
-    await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
-
-class DropdownGhoul(discord.ui.Select):
-    def __init__(self):
-        opcoes = [
-            discord.SelectOption(label="Denúncias", value="denuncias", description="Denúncias, ajuda técnica e revisão.", emoji="🚨"), 
-            discord.SelectOption(label="Suporte", value="suporte", description="Recorra a uma punição (warn/mute).", emoji="🛠️"), 
-            discord.SelectOption(label="Dúvidas", value="duvidas", description="Tire dúvidas sobre a comunidade ou regras.", emoji="❓"),
-            discord.SelectOption(label="Exposed", value="exposed", description="Falar sobre membro expondo outro.", emoji="⚠️")
-        ]
-        super().__init__(placeholder="Selecione o setor do suporte...", min_values=1, max_values=1, options=opcoes, custom_id="sel_ghoul")
-    async def callback(self, interaction: discord.Interaction): 
-        await criar_canal_ticket(interaction, self.values[0])
-
-class DropdownKings(discord.ui.Select):
-    def __init__(self):
-        opcoes = [
-            discord.SelectOption(label="Robux", value="robux", description="Comprar Robux ou ver tabelas", emoji="💰"), 
-            discord.SelectOption(label="Gamepass", value="gamepass", description="Comprar Gamepasses do Blox Fruits", emoji="📦"), 
-            discord.SelectOption(label="Frutas Perm", value="frutas_perm", description="Comprar Frutas Permanentes", emoji="🍊"),
-            discord.SelectOption(label="Frutas Físicas", value="frutas_fisicas", description="Comprar Frutas Físicas (Inventário)", emoji="🍎"),
-            discord.SelectOption(label="Contas GHM/Fruta", value="contas", description="Geral, Fruta Inv ou Contas Random", emoji="💸")
-        ]
-        super().__init__(placeholder="Selecione a categoria correta no menu abaixo...", min_values=1, max_values=1, options=opcoes, custom_id="sel_kings")
-    async def callback(self, interaction: discord.Interaction): 
-        await criar_canal_ticket(interaction, self.values[0])
-
-class DropdownNightware(discord.ui.Select):
-    def __init__(self):
-        opcoes = [
-            discord.SelectOption(label="Comprar", value="compras", description="Adquirir produtos de nossa loja.", emoji="🛒"), 
-            discord.SelectOption(label="Financeiro", value="financeiro", description="Tratar de pagamentos, reembolsos e faturamento.", emoji="💳"), 
-            discord.SelectOption(label="Suporte", value="suporte", description="Atendimento geral para dúvidas e problemas.", emoji="🛠️")
-        ]
-        super().__init__(placeholder="Selecione a categoria...", min_values=1, max_values=1, options=opcoes, custom_id="sel_nightware")
-    async def callback(self, interaction: discord.Interaction): 
-        await criar_canal_ticket(interaction, self.values[0])
-
-class ViewGhoul(discord.ui.View):
-    def __init__(self): 
-        super().__init__(timeout=None)
-        self.add_item(DropdownGhoul())
-
-class ViewKings(discord.ui.View):
-    def __init__(self): 
-        super().__init__(timeout=None)
-        self.add_item(DropdownKings())
-
-class ViewNightware(discord.ui.View):
-    def __init__(self): 
-        super().__init__(timeout=None)
-        self.add_item(DropdownNightware())
-
-class ViewValidar(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-    @discord.ui.button(label="Validar", style=discord.ButtonStyle.danger, emoji="🎫", custom_id="btn_validar_cod")
-    async def validar(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await criar_canal_ticket(interaction, "coldawn")
-
-class ViewFechar(discord.ui.View):
-    def __init__(self): 
-        super().__init__(timeout=None)
-    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="btn_fechar")
-    async def fechar(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🔒 Fechando canal em 5 segundos...", ephemeral=True)
-        await asyncio.sleep(5)
-        await interaction.channel.delete()
-
 # ==================== SISTEMA DE PUNIÇÕES E LOGS (#950606) ====================
 async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     config = obter_config(guild.id)
@@ -265,6 +121,7 @@ async def log_punicao_bonito(guild, user, staff, acao, motivo, prova_url=None):
     if user.display_avatar: 
         embed.set_thumbnail(url=user.display_avatar.url)
     
+    # Layout de punição super compacto, limpo e direto conforme solicitado
     description = (
         f"👤 **Usuário:** {user.mention}\n"
         f"📛 **Nick:** `{user.name}`\n"
@@ -399,6 +256,7 @@ async def on_member_update(before, after):
     if not config: return
     canal_logs = bot.get_channel(config["canal_logs"])
 
+    # Log de Mute (Timeout)
     if before.timed_out_until != after.timed_out_until:
         if after.id in bot.ultimos_mutes:
             bot.ultimos_mutes.discard(after.id)
@@ -422,6 +280,7 @@ async def on_member_update(before, after):
                         return
         except: pass
 
+    # Log de Nickname
     if before.nick != after.nick:
         if canal_logs:
             embed = discord.Embed(
@@ -434,6 +293,7 @@ async def on_member_update(before, after):
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
             await canal_logs.send(embed=embed)
 
+    # Log de Avatar do Servidor (Guild Specific Avatar)
     if before.guild_avatar != after.guild_avatar:
         if canal_logs:
             embed = discord.Embed(
@@ -465,6 +325,7 @@ async def on_user_update(before, after):
         canal_logs = bot.get_channel(config["canal_logs"])
         if not canal_logs: continue
 
+        # Nome Global
         if before.name != after.name:
             embed = discord.Embed(title=f"👤 {config['nome']} - Alteração de Nome Global", color=0x950606, timestamp=discord.utils.utcnow())
             if after.display_avatar: embed.set_thumbnail(url=after.display_avatar.url)
@@ -472,6 +333,7 @@ async def on_user_update(before, after):
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
             await canal_logs.send(embed=embed)
 
+        # Avatar Global (Corrige o bug de não mostrar o antigo e novo lado a lado)
         if before.avatar != after.avatar:
             embed = discord.Embed(
                 title=f"🖼️ {config['nome']} - Alteração de Avatar", 
@@ -479,6 +341,7 @@ async def on_user_update(before, after):
                 timestamp=discord.utils.utcnow()
             )
             
+            # Garante que pegamos as URLs corretas mesmo após a alteração
             avatar_antigo_url = before.avatar.url if before.avatar else before.default_avatar.url
             avatar_novo_url = after.avatar.url if after.avatar else after.default_avatar.url
 
@@ -486,8 +349,9 @@ async def on_user_update(before, after):
                 f"👤 **Membro:** {member.mention} ({member.id})\n"
                 f"📸 **Avatar Anterior:** [Clique para abrir]({avatar_antigo_url})\n"
                 f"✨ **Avatar Novo:** [Clique para abrir]({avatar_novo_url})\n\n"
-                f"*O membro alterou sua foto de perfil global.*"
+                f"*O membro alterou sua foto de perfil global. O avatar anterior está na miniatura (canto direito) e o novo está ampliado abaixo.*"
             )
+            # Mostra o antigo como uma miniatura pequena no canto e o novo gigante abaixo!
             embed.set_thumbnail(url=avatar_antigo_url)
             embed.set_image(url=avatar_novo_url)
             embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
@@ -521,223 +385,104 @@ async def on_voice_state_update(member, before, after):
         embed.description = f"👤 **Membro:** {member.mention} ({member.id})\n📤 **Anterior:** {before.channel.mention} (`{tipo_antigo}`)\n📥 **Novo:** {after.channel.mention} (`{tipo_novo}`)"
         await canal_logs.send(embed=embed)
 
-# ==================== LOGS EXTRAS (CARGOS, CANAIS, TÓPICOS, ETC) ====================
-@bot.event
-async def on_guild_role_create(role):
-    config = obter_config(role.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🔰 {config['nome']} - Novo Cargo Criado", description=f"O cargo {role.mention} (`{role.name}`) foi criado no servidor.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=role.guild.icon.url if role.guild.icon else None)
-        await canal_logs.send(embed=embed)
+# ==================== SISTEMA DE TICKETS (#950606) ====================
+class DropdownGhoul(discord.ui.Select):
+    def __init__(self):
+        opcoes = [
+            discord.SelectOption(label="Denúncias", value="denuncias", description="Denúncias, ajuda técnica e revisão.", emoji="🚨"), 
+            discord.SelectOption(label="Suporte", value="suporte", description="Recorra a uma punição (warn/mute).", emoji="🛠️"), 
+            discord.SelectOption(label="Dúvidas", value="duvidas", description="Tire dúvidas sobre a comunidade ou regras.", emoji="❓"),
+            discord.SelectOption(label="Exposed", value="exposed", description="Falar sobre membro expondo outro.", emoji="⚠️")
+        ]
+        super().__init__(placeholder="Selecione o setor do suporte...", min_values=1, max_values=1, options=opcoes, custom_id="sel_ghoul")
+    async def callback(self, interaction: discord.Interaction): 
+        await criar_canal_ticket(interaction, self.values[0])
 
-@bot.event
-async def on_guild_role_delete(role):
-    config = obter_config(role.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Cargo Apagado", description=f"O cargo `{role.name}` foi apagado do servidor.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=role.guild.icon.url if role.guild.icon else None)
-        await canal_logs.send(embed=embed)
+class DropdownKings(discord.ui.Select):
+    def __init__(self):
+        opcoes = [
+            discord.SelectOption(label="Robux", value="robux", description="Comprar Robux ou ver tabelas", emoji="💰"), 
+            discord.SelectOption(label="Gamepass", value="gamepass", description="Comprar Gamepasses do Blox Fruits", emoji="📦"), 
+            discord.SelectOption(label="Frutas Perm", value="frutas_perm", description="Comprar Frutas Permanentes", emoji="🍊"),
+            discord.SelectOption(label="Frutas Físicas", value="frutas_fisicas", description="Comprar Frutas Físicas (Inventário)", emoji="🍎"),
+            discord.SelectOption(label="Contas GHM/Fruta", value="contas", description="Geral, Fruta Inv ou Contas Random", emoji="💸")
+        ]
+        super().__init__(placeholder="Selecione a categoria correta no menu abaixo...", min_values=1, max_values=1, options=opcoes, custom_id="sel_kings")
+    async def callback(self, interaction: discord.Interaction): 
+        await criar_canal_ticket(interaction, self.values[0])
 
-@bot.event
-async def on_guild_role_update(before, after):
-    config = obter_config(before.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if before.name != after.name or before.color != after.color or before.permissions != after.permissions:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Cargo Atualizado", description=f"O cargo {after.mention} (`{after.name}`) sofreu alterações.", color=0x950606, timestamp=discord.utils.utcnow())
-            embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
-            await canal_logs.send(embed=embed)
+class DropdownNightware(discord.ui.Select):
+    def __init__(self):
+        opcoes = [
+            discord.SelectOption(label="Comprar", value="compras", description="Adquirir produtos de nossa loja.", emoji="🛒"), 
+            discord.SelectOption(label="Financeiro", value="financeiro", description="Tratar de pagamentos, reembolsos e faturamento.", emoji="💳"), 
+            discord.SelectOption(label="Suporte", value="suporte", description="Atendimento geral para dúvidas e problemas.", emoji="🛠️")
+        ]
+        super().__init__(placeholder="Selecione a categoria...", min_values=1, max_values=1, options=opcoes, custom_id="sel_nightware")
+    async def callback(self, interaction: discord.Interaction): 
+        await criar_canal_ticket(interaction, self.values[0])
 
-@bot.event
-async def on_guild_channel_create(channel):
-    config = obter_config(channel.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"📁 {config['nome']} - Novo Canal Criado", description=f"O canal {channel.mention} (`{channel.name}`) foi criado.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=channel.guild.icon.url if channel.guild.icon else None)
-        await canal_logs.send(embed=embed)
+class ViewGhoul(discord.ui.View):
+    def __init__(self): 
+        super().__init__(timeout=None)
+        self.add_item(DropdownGhoul())
 
-@bot.event
-async def on_guild_channel_delete(channel):
-    config = obter_config(channel.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Canal Apagado", description=f"O canal `{channel.name}` foi apagado.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=channel.guild.icon.url if channel.guild.icon else None)
-        await canal_logs.send(embed=embed)
+class ViewKings(discord.ui.View):
+    def __init__(self): 
+        super().__init__(timeout=None)
+        self.add_item(DropdownKings())
 
-@bot.event
-async def on_guild_channel_update(before, after):
-    config = obter_config(before.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if before.name != after.name or before.overwrites != after.overwrites:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Canal Atualizado", description=f"O canal {after.mention} sofreu alterações (Nome, Permissões, etc).", color=0x950606, timestamp=discord.utils.utcnow())
-            embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
-            await canal_logs.send(embed=embed)
+class ViewNightware(discord.ui.View):
+    def __init__(self): 
+        super().__init__(timeout=None)
+        self.add_item(DropdownNightware())
 
-@bot.event
-async def on_thread_create(thread):
-    config = obter_config(thread.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🧵 {config['nome']} - Novo Tópico Criado", description=f"O tópico {thread.mention} (`{thread.name}`) foi criado no canal {thread.parent.mention}.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=thread.guild.icon.url if thread.guild.icon else None)
-        await canal_logs.send(embed=embed)
+class ViewValidar(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    @discord.ui.button(label="Validar", style=discord.ButtonStyle.danger, emoji="🎫", custom_id="btn_validar_cod")
+    async def validar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await criar_canal_ticket(interaction, "coldawn")
 
-@bot.event
-async def on_thread_delete(thread):
-    config = obter_config(thread.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Tópico Apagado", description=f"Um tópico chamado `{thread.name}` foi apagado.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=thread.guild.icon.url if thread.guild.icon else None)
-        await canal_logs.send(embed=embed)
+class ViewFechar(discord.ui.View):
+    def __init__(self): 
+        super().__init__(timeout=None)
+    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="btn_fechar")
+    async def fechar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🔒 Fechando canal em 5 segundos...", ephemeral=True)
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
 
-@bot.event
-async def on_thread_update(before, after):
-    config = obter_config(before.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if before.name != after.name or before.archived != after.archived:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Tópico Atualizado", description=f"O tópico {after.mention} sofreu alterações.", color=0x950606, timestamp=discord.utils.utcnow())
-            embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
-            await canal_logs.send(embed=embed)
+async def criar_canal_ticket(interaction: discord.Interaction, setor: str):
+    config = obter_config(interaction.guild.id)
+    if not config or interaction.response.is_done(): 
+        return
+    categoria = discord.utils.get(interaction.guild.categories, id=config["categoria_tickets"])
+    cargo_staff = interaction.guild.get_role(config["cargo_staff"])
+    
+    overwrites = {
+        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True),
+        interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True, manage_channels=True)
+    }
+    if cargo_staff: 
+        overwrites[cargo_staff] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
 
-@bot.event
-async def on_invite_create(invite):
-    if not invite.guild: return
-    config = obter_config(invite.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🔗 {config['nome']} - Criação de Convite", description=f"👤 **Criador:** {invite.inviter.mention if invite.inviter else 'Desconhecido'}\n🔗 **Código:** `{invite.code}`\n📍 **Canal:** {invite.channel.mention}", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=invite.guild.icon.url if invite.guild.icon else None)
-        await canal_logs.send(embed=embed)
+    canal = await interaction.guild.create_text_channel(name=f"ticket-{interaction.user.name}-{setor}", category=categoria, overwrites=overwrites)
+    
+    embed = discord.Embed(
+        title=f"🚨 {config['nome']} - Atendimento", 
+        description=(
+            f"Olá {interaction.user.mention},\n\n"
+            f"Seu ticket para **{setor.upper()}** foi aberto com sucesso!\n"
+            f"Descreva detalhadamente o que precisa abaixo para que a equipe possa te responder."
+        ), 
+        color=0x950606
+    )
+    await canal.send(content=f"{interaction.user.mention} {cargo_staff.mention if cargo_staff else ''}", embed=embed, view=ViewFechar())
+    await interaction.response.send_message(f"✅ Ticket criado em {canal.mention}!", ephemeral=True)
 
-@bot.event
-async def on_invite_delete(invite):
-    if not invite.guild: return
-    config = obter_config(invite.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Convite Apagado", description=f"O convite com código `{invite.code}` do canal {invite.channel.mention} foi apagado.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=invite.guild.icon.url if invite.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_guild_emojis_update(guild, before, after):
-    config = obter_config(guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if len(before) < len(after):
-            novo = list(set(after) - set(before))[0]
-            embed = discord.Embed(title=f"😀 {config['nome']} - Novo Emoji Adicionado", description=f"Emoji adicionado: {novo} (`{novo.name}`)", color=0x950606, timestamp=discord.utils.utcnow())
-        elif len(before) > len(after):
-            removido = list(set(before) - set(after))[0]
-            embed = discord.Embed(title=f"🗑️ {config['nome']} - Emoji Apagado", description=f"O emoji `{removido.name}` foi deletado.", color=0x950606, timestamp=discord.utils.utcnow())
-        else:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Emoji Atualizado", description="Um ou mais emojis foram renomeados ou atualizados.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_guild_stickers_update(guild, before, after):
-    config = obter_config(guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if len(before) < len(after):
-            novo = list(set(after) - set(before))[0]
-            embed = discord.Embed(title=f"🖼️ {config['nome']} - Nova Figurinha Adicionada", description=f"Figurinha adicionada: `{novo.name}`", color=0x950606, timestamp=discord.utils.utcnow())
-        elif len(before) > len(after):
-            removido = list(set(before) - set(after))[0]
-            embed = discord.Embed(title=f"🗑️ {config['nome']} - Figurinha Apagada", description=f"A figurinha `{removido.name}` foi deletada.", color=0x950606, timestamp=discord.utils.utcnow())
-        else:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Figurinha Atualizada", description="Uma figurinha foi renomeada ou atualizada.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_scheduled_event_create(event):
-    config = obter_config(event.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"📅 {config['nome']} - Novo Evento Criado", description=f"Evento: **{event.name}** foi criado.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=event.guild.icon.url if event.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_scheduled_event_delete(event):
-    config = obter_config(event.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Evento Apagado", description=f"O evento **{event.name}** foi cancelado/apagado.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=event.guild.icon.url if event.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_scheduled_event_update(before, after):
-    config = obter_config(before.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if before.name != after.name or before.description != after.description or before.status != after.status:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Evento Atualizado", description=f"O evento **{after.name}** sofreu alterações (nome, descrição ou status).", color=0x950606, timestamp=discord.utils.utcnow())
-            embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
-            await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_bulk_message_delete(messages):
-    if not messages: return
-    guild = messages[0].guild
-    config = obter_config(guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Apagar Muitas Mensagens (Purge)", description=f"**{len(messages)}** mensagens foram apagadas de uma só vez no canal {messages[0].channel.mention}.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_guild_update(before, after):
-    config = obter_config(before.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        if before.name != after.name or before.icon != after.icon:
-            embed = discord.Embed(title=f"⚙️ {config['nome']} - Atualizar Servidor", description="As configurações gerais do servidor (Nome, Ícone, etc) foram alteradas.", color=0x950606, timestamp=discord.utils.utcnow())
-            embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=after.icon.url if after.icon else None)
-            await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_webhooks_update(channel):
-    config = obter_config(channel.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🪝 {config['nome']} - Webhook Atualizado", description=f"Os webhooks no canal {channel.mention} foram criados, atualizados ou apagados.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=channel.guild.icon.url if channel.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_guild_integrations_update(guild):
-    config = obter_config(guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🔌 {config['nome']} - Integração Atualizada", description="As integrações (Bots, Twitch, YouTube) do servidor sofreram alterações.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=guild.icon.url if guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_automod_rule_create(rule):
-    config = obter_config(rule.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🛡️ {config['nome']} - Nova Regra de Auto Moderação do Discord", description=f"Regra criada: `{rule.name}`", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=rule.guild.icon.url if rule.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_automod_rule_update(before, after):
-    config = obter_config(before.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"⚙️ {config['nome']} - Regra de Auto Moderação Atualizada", description=f"Regra alterada: `{after.name}`", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=before.guild.icon.url if before.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_automod_rule_delete(rule):
-    config = obter_config(rule.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🗑️ {config['nome']} - Regra de Auto Moderação Apagada", description=f"A regra `{rule.name}` foi apagada.", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=rule.guild.icon.url if rule.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-@bot.event
-async def on_automod_action(execution):
-    config = obter_config(execution.guild.id)
-    if config and (canal_logs := bot.get_channel(config["canal_logs"])):
-        embed = discord.Embed(title=f"🚨 {config['nome']} - Auto Moderação do Discord Disparada", description=f"👤 **Membro:** {execution.member.mention if execution.member else 'Desconhecido'}\n📜 **Regra Bloqueada:** `{execution.rule.name}`\n📍 **Canal:** {execution.channel.mention if execution.channel else 'Desconhecido'}\n💬 **Conteúdo Flagrado:** `{execution.matched_content}`", color=0x950606, timestamp=discord.utils.utcnow())
-        embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=execution.guild.icon.url if execution.guild.icon else None)
-        await canal_logs.send(embed=embed)
-
-# ==================== AUTOMODERAÇÃO E MENSAGENS ====================
+# ==================== AUTOMODERAÇÃO ATIVA E FORTE ====================
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: 
@@ -747,17 +492,21 @@ async def on_message(message):
         return
 
     texto_norm = normalizar_texto(message.content)
+    # Remove ABSOLUTAMENTE TODOS OS ESPAÇOS para impedir burla como "c h e c k m y b i o"
     texto_junto = re.sub(r'\s+', '', texto_norm)
     
+    # 1. Filtro de Termos Proibidos (Mensagens Fake / Ban Automático)
     for termo in TERMOS_BAN:
         if termo in texto_junto:
             bot.mensagens_ignoradas.add(message.id)
             try: await message.delete()
             except: pass
             
+            # Executa banimento e manda para os logs sem exceção de Staff
             await executar_banimento(message.guild, message.author, bot.user, f"Tentativa de golpe (Mensagem Fake): `{termo}`", "Ban (Automático)")
             return
 
+    # 2. Filtro de Palavrões / Xingamentos
     for palavrao in PALAVROES:
         if palavrao in texto_junto:
             bot.mensagens_ignoradas.add(message.id)
@@ -767,6 +516,7 @@ async def on_message(message):
             await log_filtro_automod(message, "Palavrão/Xingamento Detectado", message.content)
             return 
 
+    # Coleta URLs de mídias (Anexos + links de imagens na mensagem)
     urls_imagens = []
     if message.attachments:
         for anexo in message.attachments:
@@ -777,6 +527,7 @@ async def on_message(message):
     links_no_texto = re.findall(r'(https?://\S+\.(?:png|jpg|jpeg|webp|gif)(?:\?\S+)?)', message.content)
     urls_imagens.extend(links_no_texto)
 
+    # Pré-download das mídias para cache robusto (Anti-404 nos logs)
     if urls_imagens:
         attachments_data = []
         for idx, url in enumerate(urls_imagens):
@@ -794,13 +545,17 @@ async def on_message(message):
         if attachments_data:
             bot.midia_cache[message.id] = attachments_data
             if len(bot.midia_cache) > 300:
+                # Remove o mais antigo do cache para evitar vazamento de memória
                 bot.midia_cache.pop(next(iter(bot.midia_cache)))
 
+    # 3. Filtro de Imagens Proibidas (Filtro por Hash)
     for url in urls_imagens:
         try:
+            # Discord exige cabeçalho de navegador para descarregar mídias de forma confiável
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
+                # Converte para RGB para garantir que imagens em paleta de cores ou transparentes sejam computadas sem erro
                 img = Image.open(BytesIO(response.content)).convert('RGB')
                 img_avg_hash = imagehash.average_hash(img)
                 img_p_hash = imagehash.phash(img)
@@ -808,16 +563,19 @@ async def on_message(message):
                 
                 for hash_bloqueado in IMAGENS_BLOQUEADAS:
                     hash_alvo = imagehash.hex_to_hash(hash_bloqueado)
+                    # Com distância Hamming <= 8 em qualquer algoritmo (Average, Perceptual ou Difference Hash)
                     if (img_avg_hash - hash_alvo <= 8) or (img_p_hash - hash_alvo <= 8) or (img_d_hash - hash_alvo <= 8):
                         bot.mensagens_ignoradas.add(message.id)
                         try: await message.delete()
                         except: pass
                         
+                        # Executa banimento e envia prova
                         await executar_banimento(message.guild, message.author, bot.user, "Envio de imagem proibida.", "Ban (Automático)", url)
                         return
         except Exception as e:
             print(f"[Aviso Automod] Erro ao processar hash da imagem {url}: {e}")
 
+    # 4. Filtro de Convites/Links Proibidos
     if re.search(r'(discord\.gg/|discord\.com/invite/)', message.content.lower()):
         bot.mensagens_ignoradas.add(message.id)
         try: await message.delete()
@@ -845,14 +603,16 @@ async def on_message_delete(message):
         conteudo = message.content[:1000] if message.content else "Mensagem vazia ou apenas mídia"
         embed.description = f"👤 **Usuário:** {message.author.mention} ({message.author.id})\n💬 **Canal:** {message.channel.mention}\n\n**Conteúdo Original:**\n```{conteudo}```"
         
+        # Faz o upload direto dos bytes guardados em cache para o canal de logs (Garante 100% que a mídia apareça)
         arquivos_enviar = []
         if message.id in bot.midia_cache:
             for i, (dados_binarios, nome_arquivo) in enumerate(bot.midia_cache[message.id]):
                 file = discord.File(BytesIO(dados_binarios), filename=nome_arquivo)
                 arquivos_enviar.append(file)
+                # Configura a imagem do embed para usar o arquivo anexado
                 embed.set_image(url=f"attachment://{nome_arquivo}")
-                break 
-            del bot.midia_cache[message.id] 
+                break # Mostra a primeira imagem anexada ampliada no embed
+            del bot.midia_cache[message.id] # Remove do cache
         
         embed.set_footer(text=f"Segurança Ativa {config['nome']}", icon_url=message.guild.icon.url if message.guild.icon else None)
         
@@ -907,31 +667,6 @@ async def ban_slash(interaction: discord.Interaction, membro: discord.Member, mo
         await interaction.followup.send(f"🔨 O usuário {membro.mention} foi banido com sucesso.")
     else:
         await interaction.followup.send("❌ Erro ao banir. Verifique se o meu cargo é superior ao da pessoa que você está tentando banir.")
-
-@bot.tree.command(name="bloquear_imagem", description="Bloqueia uma imagem adicionando seu hash à blacklist.")
-@app_commands.default_permissions(administrator=True)
-async def bloquear_imagem_slash(interaction: discord.Interaction, imagem: discord.Attachment):
-    if not imagem.content_type or not imagem.content_type.startswith("image/"):
-        return await interaction.response.send_message("❌ O arquivo precisa ser uma imagem válida.", ephemeral=True)
-    
-    await interaction.response.defer(ephemeral=True)
-    try:
-        dados = await imagem.read()
-        img = Image.open(BytesIO(dados)).convert("RGB")
-        h = str(imagehash.average_hash(img))
-        
-        if h not in IMAGENS_BLOQUEADAS:
-            IMAGENS_BLOQUEADAS.append(h)
-            
-        embed = discord.Embed(
-            title="⛔ IMAGEM REGISTRADA NA BLACKLIST", 
-            description=f"A imagem foi computada com sucesso.\nQualquer pessoa que tentar postar sofrerá banimento imediato.\n\n**Hash Gerado:** `{h}`", 
-            color=0x950606
-        )
-        embed.set_footer(text="Segurança Ativa", icon_url=bot.user.display_avatar.url if bot.user.display_avatar else None)
-        await interaction.followup.send(embed=embed, ephemeral=True)
-    except Exception as e:
-        await interaction.followup.send(f"❌ Erro ao computar hash da imagem: {e}", ephemeral=True)
 
 @bot.tree.command(name="painel_tickets", description="Envia o painel de atendimento de tickets no canal.")
 @app_commands.choices(painel=[
