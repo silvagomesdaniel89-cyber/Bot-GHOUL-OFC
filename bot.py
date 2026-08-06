@@ -87,6 +87,9 @@ class MeuBot(commands.Bot):
         self.midia_cache = {} # Cache temporário de mídias deletadas
 
     async def setup_hook(self):
+        class ViewGhoul(discord.ui.View):
+    def __init__(self):
+        super().__init__()
         self.add_view(ViewGhoul())
         self.add_view(ViewKings())
         self.add_view(ViewNightware())
