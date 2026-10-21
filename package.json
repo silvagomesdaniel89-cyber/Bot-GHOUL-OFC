@@ -1,0 +1,18 @@
+{
+  "name": "bot-transmissao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bot de Discord que abre uma sala de transmissão (tela/câmera) para quem está na call",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --env-file=.env index.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "discord.js": "^14.14.0",
+    "express": "^4.19.0",
+    "livekit-client": "^2.0.0",
+    "livekit-server-sdk": "^2.0.0"
+  }
+}

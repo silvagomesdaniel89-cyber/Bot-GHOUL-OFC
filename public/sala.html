@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sala de transmissão</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --fundo: #0f1014;
+    --painel: #17181e;
+    --painel-2: #1f2129;
+    --borda: #2a2c36;
+    --texto: #f2f3f7;
+    --suave: #9aa0b0;
+    --destaque: #6c7bff;
+    --destaque-2: #8b5cf6;
+    --perigo: #ef4452;
+    --ok: #34d399;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    color: var(--texto);
+    background:
+      radial-gradient(900px 500px at 10% -10%, rgba(108,123,255,.18), transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, rgba(139,92,246,.14), transparent 60%),
+      var(--fundo);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* Topo */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    background: rgba(23,24,30,.75);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--borda);
+  }
+  .marca {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--destaque), var(--destaque-2));
+  }
+  .marca svg { width: 18px; height: 18px; }
+  h1 { margin: 0; font-size: 1rem; font-weight: 650; letter-spacing: .1px; }
+  .sub { margin: 0; font-size: .8rem; color: var(--suave); }
+  .titulos { margin-right: auto; min-width: 0; }
+  .titulos h1, .titulos .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: .78rem; font-weight: 600;
+    background: var(--painel-2); border: 1px solid var(--borda); color: var(--suave);
+  }
+  .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--suave); }
+  .chip.ao-vivo { color: #fff; background: rgba(239,68,82,.18); border-color: rgba(239,68,82,.5); }
+  .chip.ao-vivo i { background: var(--perigo); animation: pulsa 1.4s infinite; }
+  @keyframes pulsa { 50% { opacity: .35; } }
+
+  /* Aviso */
+  #aviso {
+    margin: 12px 18px 0; padding: 10px 14px; border-radius: 10px;
+    background: var(--painel); border: 1px solid var(--borda); color: var(--suave); font-size: .88rem;
+  }
+
+  /* Palco */
+  #palco {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    align-content: start;
+    padding: 14px 18px 120px;
+    overflow: auto;
+  }
+  #vazio {
+    grid-column: 1 / -1;
+    margin: 10vh auto 0; max-width: 36ch; text-align: center; color: var(--suave);
+  }
+  #vazio .icone {
+    width: 72px; height: 72px; margin: 0 auto 14px; border-radius: 20px;
+    display: grid; place-items: center; background: var(--painel); border: 1px solid var(--borda);
+  }
+  #vazio .icone svg { width: 34px; height: 34px; stroke: var(--destaque); }
+  #vazio p { margin: 0; }
+  #vazio .t { color: var(--texto); font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+
+  figure {
+    position: relative; margin: 0; overflow: hidden;
+    background: #000; border-radius: 14px; border: 1px solid var(--borda);
+    box-shadow: 0 8px 28px rgba(0,0,0,.35);
+  }
+  figure.tela { grid-column: 1 / -1; }
+  video { display: block; width: 100%; max-height: calc(100vh - 230px); object-fit: contain; background: #000; }
+  figure:not(.tela) video { aspect-ratio: 16 / 9; object-fit: cover; }
+  figcaption {
+    position: absolute; left: 10px; bottom: 10px;
+    padding: 3px 10px; border-radius: 999px;
+    background: rgba(15,16,20,.75); backdrop-filter: blur(6px);
+    font-size: .8rem; font-weight: 600;
+  }
+  .tela-cheia {
+    position: absolute; right: 10px; top: 10px; padding: 6px 10px; font-size: .78rem;
+    background: rgba(15,16,20,.75); border: 1px solid var(--borda); border-radius: 8px;
+    opacity: 0; transition: opacity .15s;
+  }
+  figure:hover .tela-cheia, .tela-cheia:focus-visible { opacity: 1; }
+  @media (hover: none) { .tela-cheia { opacity: 1; } }
+
+  /* Barra de controles */
+  #controles {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px;
+    width: max-content; max-width: calc(100% - 24px);
+    padding: 10px; border-radius: 18px;
+    background: rgba(23,24,30,.88); backdrop-filter: blur(12px);
+    border: 1px solid var(--borda); box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  }
+  button, select {
+    font: inherit; font-size: .9rem; font-weight: 600; color: var(--texto);
+    background: var(--painel-2); border: 1px solid var(--borda); border-radius: 12px;
+    padding: 9px 14px; cursor: pointer; transition: background .15s, transform .05s;
+  }
+  button:hover:not(:disabled) { background: #292c37; }
+  button:active:not(:disabled) { transform: scale(.97); }
+  button:disabled, select:disabled { opacity: .5; cursor: not-allowed; }
+  button.btn { display: inline-flex; align-items: center; gap: 8px; }
+  button.btn svg { width: 18px; height: 18px; flex: none; }
+  button.ativo { background: linear-gradient(135deg, var(--destaque), var(--destaque-2)); border-color: transparent; }
+  button.sair { background: rgba(239,68,82,.15); border-color: rgba(239,68,82,.5); color: #ffb3b9; }
+  button.sair:hover:not(:disabled) { background: rgba(239,68,82,.3); }
+  label.opc { display: inline-flex; align-items: center; gap: 6px; padding: 0 6px; font-size: .85rem; color: var(--suave); cursor: pointer; }
+  label.opc input { accent-color: var(--destaque); width: 16px; height: 16px; }
+  .sep { width: 1px; align-self: stretch; background: var(--borda); margin: 2px 2px; }
+  :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 560px) {
+    button.btn span { display: none; }
+    button.btn { padding: 10px 12px; }
+    #controles { border-radius: 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="marca" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+  </div>
+  <div class="titulos">
+    <h1 id="titulo">Sala de transmissão</h1>
+    <p class="sub" id="sub">Conectando…</p>
+  </div>
+  <span class="chip" id="chipVivo"><i></i><span id="chipTxt">Sem transmissão</span></span>
+</header>
+
+<p id="aviso" role="status">Conectando…</p>
+
+<main id="palco">
+  <div id="vazio" hidden>
+    <div class="icone">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+    </div>
+    <p class="t">Ninguém está transmitindo</p>
+    <p id="vazioTxt">Clique em “Compartilhar tela” para começar.</p>
+  </div>
+</main>
+
+<div id="controles">
+  <select id="qualidade" aria-label="Qualidade da tela">
+    <option value="720p30">720p · 30 fps (recomendado)</option>
+    <option value="720p15">720p · 15 fps (economiza banda)</option>
+    <option value="720p60">720p · 60 fps (mais fluido)</option>
+    <option value="1080p30">1080p · 30 fps</option>
+    <option value="1080p60">1080p · 60 fps (gasta muita banda)</option>
+  </select>
+  <label class="opc" id="lblAudio" title="Funciona no Chrome/Edge ao compartilhar uma aba ou, no Windows, a tela inteira">
+    <input type="checkbox" id="audio"> Com áudio
+  </label>
+  <button class="btn" id="tela" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+    <span id="telaTxt">Compartilhar tela</span>
+  </button>
+  <button class="btn" id="cam" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+    <span id="camTxt">Ligar câmera</span>
+  </button>
+  <button class="btn" id="som" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a10 10 0 010 14"/></svg>
+    <span>Ativar som</span>
+  </button>
+  <span class="sep" aria-hidden="true"></span>
+  <button class="btn sair" id="sair" disabled>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+    <span>Sair</span>
+  </button>
+</div>
+
+<script src="/livekit-client.js"></script>
+<script>
+const { Room, RoomEvent, Track } = LivekitClient;
+const $ = (id) => document.getElementById(id);
+const codigo = new URLSearchParams(location.search).get('c');
+let sala, sessao, ehStaff = false;
+
+// Qualidades de tela: resolução, fps e bitrate máximo.
+const QUAL = {
+  '720p15':  { w: 1280, h: 720,  fps: 15, br: 1_500_000 },
+  '720p30':  { w: 1280, h: 720,  fps: 30, br: 2_500_000 },
+  '720p60':  { w: 1280, h: 720,  fps: 60, br: 4_500_000 },
+  '1080p30': { w: 1920, h: 1080, fps: 30, br: 5_000_000 },
+  '1080p60': { w: 1920, h: 1080, fps: 60, br: 8_000_000 },
+};
+
+const podeCompartilhar = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+const aviso = (t) => { $('aviso').textContent = t; };
+
+function atualizaVazio() {
+  const palco = $('palco');
+  $('vazio').hidden = palco.querySelector('figure') !== null;
+  const aoVivo = palco.querySelector('figure.tela') !== null;
+  $('chipVivo').classList.toggle('ao-vivo', aoVivo);
+  $('chipTxt').textContent = aoVivo ? 'Ao vivo' : 'Sem transmissão';
+}
+
+function mostra(track, pessoa) {
+  if (!track) return;
+  if (track.kind === 'audio') {
+    if (pessoa.isLocal) return; // não ouvir a si mesmo
+    const el = track.attach();
+    el.hidden = true;
+    document.body.append(el);
+    return;
+  }
+  if (track.kind !== 'video') return;
+  const ehTela = track.source === Track.Source.ScreenShare;
+  if (pessoa.isLocal && ehTela) return; // evita o efeito espelho na própria tela
+  const fig = document.createElement('figure');
+  if (ehTela) fig.className = 'tela';
+  const legenda = document.createElement('figcaption');
+  const nome = pessoa.name || pessoa.identity;
+  legenda.textContent = ehTela ? `${nome} está compartilhando a tela` : nome;
+  fig.append(track.attach(), legenda);
+  if (ehTela) {
+    const b = document.createElement('button');
+    b.className = 'tela-cheia';
+    b.textContent = 'Tela cheia';
+    b.onclick = () => fig.requestFullscreen && fig.requestFullscreen().catch(() => {});
+    fig.append(b);
+  }
+  $('palco').append(fig);
+  atualizaVazio();
+}
+
+function remove(track) {
+  track.detach().forEach((el) => (el.closest('figure') || el).remove());
+  atualizaVazio();
+}
+
+function atualizaBotoes() {
+  const lp = sala.localParticipant;
+  $('telaTxt').textContent = lp.isScreenShareEnabled ? 'Parar de compartilhar' : 'Compartilhar tela';
+  $('tela').classList.toggle('ativo', lp.isScreenShareEnabled);
+  $('camTxt').textContent = lp.isCameraEnabled ? 'Desligar câmera' : 'Ligar câmera';
+  $('cam').classList.toggle('ativo', lp.isCameraEnabled);
+  $('qualidade').disabled = lp.isScreenShareEnabled;
+  $('audio').disabled = lp.isScreenShareEnabled;
+}
+
+const api = (rota) => fetch(rota + '?s=' + encodeURIComponent(sessao), { method: 'POST' });
+const devolveVez = () => api('/api/tela/parar').catch(() => {});
+
+// Espera o LiveKit avisar que a permissão de tela chegou (ou desiste em 3 s).
+function esperaPermissao() {
+  return new Promise((resolve) => {
+    const fim = () => { clearTimeout(t); sala.off(RoomEvent.ParticipantPermissionsChanged, h); resolve(); };
+    const h = (_prev, pessoa) => { if (pessoa === sala.localParticipant) fim(); };
+    const t = setTimeout(fim, 3000);
+    sala.on(RoomEvent.ParticipantPermissionsChanged, h);
+  });
+}
+
+async function iniciar() {
+  if (!codigo) return aviso('Link inválido. Use o botão “Abrir transmissão” no Discord.');
+  atualizaVazio();
+
+  let dados;
+  try {
+    const r = await fetch('/api/join?c=' + encodeURIComponent(codigo));
+    dados = await r.json();
+    if (!r.ok) return aviso(dados.error || 'Não foi possível entrar na sala.');
+  } catch {
+    return aviso('Sem conexão com o servidor. Verifique sua internet e recarregue a página.');
+  }
+
+  sala = new Room({ adaptiveStream: true, dynacast: true });
+  sala.on(RoomEvent.TrackSubscribed, (track, _pub, pessoa) => mostra(track, pessoa));
+  sala.on(RoomEvent.TrackUnsubscribed, (track) => remove(track));
+  sala.on(RoomEvent.LocalTrackPublished, (pub, pessoa) => { mostra(pub.track, pessoa); atualizaBotoes(); });
+  sala.on(RoomEvent.LocalTrackUnpublished, (pub) => {
+    if (pub.track) remove(pub.track);
+    if (pub.source === Track.Source.ScreenShare) devolveVez(); // inclui o botão "Parar" do navegador
+    atualizaBotoes();
+  });
+  sala.on(RoomEvent.AudioPlaybackStatusChanged, () => { $('som').hidden = sala.canPlaybackAudio; });
+  sala.on(RoomEvent.Disconnected, () => {
+    aviso('Você saiu da sala. Para voltar, entre na call e clique em “Abrir transmissão” no Discord.');
+    $('palco').querySelectorAll('figure').forEach((f) => f.remove());
+    document.querySelectorAll('audio').forEach((a) => a.remove());
+    ['tela', 'cam', 'sair'].forEach((id) => { $(id).disabled = true; });
+    $('vazio').hidden = true;
+    $('chipVivo').classList.remove('ao-vivo');
+    $('chipTxt').textContent = 'Desconectado';
+  });
+
+  try {
+    await sala.connect(dados.url, dados.token);
+  } catch (e) {
+    return aviso('Não foi possível conectar à sala: ' + e.message);
+  }
+
+  sessao = dados.session;
+  ehStaff = !!dados.staff;
+  $('titulo').textContent = dados.channel;
+  $('sub').textContent = 'Sala de transmissão';
+
+  if (!ehStaff) {
+    ['tela', 'qualidade', 'lblAudio'].forEach((id) => { $(id).hidden = true; });
+    $('vazioTxt').textContent = 'Só a staff pode compartilhar a tela.';
+    aviso('Você está na sala como espectador. Só a staff compartilha a tela.');
+  } else if (!podeCompartilhar) {
+    ['tela', 'qualidade', 'lblAudio'].forEach((id) => { $(id).hidden = true; });
+    $('vazioTxt').textContent = 'Para compartilhar a tela, abra esta página em um computador.';
+    aviso('Celulares e consoles não permitem compartilhar tela pelo navegador (limitação dos navegadores). Aqui você pode assistir e usar a câmera.');
+  } else {
+    aviso('Você está na sala. Só uma pessoa da staff compartilha a tela por vez.');
+  }
+
+  ['tela', 'cam', 'sair'].forEach((id) => { $(id).disabled = false; });
+  $('som').hidden = sala.canPlaybackAudio;
+  atualizaBotoes();
+}
+
+$('tela').onclick = async () => {
+  const lp = sala.localParticipant;
+  $('tela').disabled = true;
+  try {
+    if (lp.isScreenShareEnabled) {
+      await lp.setScreenShareEnabled(false);
+      await devolveVez();
+    } else {
+      const espera = esperaPermissao();
+      const r = await api('/api/tela/pedir');
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { aviso(d.error || 'Não foi possível compartilhar a tela.'); return; }
+      await espera;
+      try {
+        const q = QUAL[$('qualidade').value] || QUAL['720p30'];
+        await lp.setScreenShareEnabled(
+          true,
+          { resolution: { width: q.w, height: q.h, frameRate: q.fps }, contentHint: 'motion', audio: $('audio').checked },
+          { screenShareEncoding: { maxBitrate: q.br, maxFramerate: q.fps } },
+        );
+        aviso('Você está compartilhando a tela.');
+      } catch (e) {
+        await devolveVez(); // cancelou a janela de escolha ou deu erro: devolve a vez
+        aviso('Não foi possível compartilhar a tela: ' + e.message);
+      }
+    }
+  } catch (e) {
+    aviso('Não foi possível compartilhar a tela: ' + e.message);
+  } finally {
+    $('tela').disabled = false;
+    atualizaBotoes();
+  }
+};
+
+$('cam').onclick = async () => {
+  try {
+    await sala.localParticipant.setCameraEnabled(!sala.localParticipant.isCameraEnabled);
+  } catch (e) {
+    aviso('Não foi possível ligar a câmera: ' + e.message);
+  }
+  atualizaBotoes();
+};
+
+$('som').onclick = async () => { try { await sala.startAudio(); } catch { /* ignorar */ } $('som').hidden = sala.canPlaybackAudio; };
+$('sair').onclick = () => sala.disconnect();
+
+iniciar();
+</script>
+</body>
+</html>
